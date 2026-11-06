@@ -20,7 +20,8 @@ infra/
     │   ├── eks-addons/              # aws_eks_addon (+ pod identity cho add-on)
     │   ├── pod-identity/            # IAM role + policy + aws_eks_pod_identity_association
     │   ├── ecr-repository/          # aws_ecr_repository + lifecycle policy
-    │   ├── s3-bucket/               # bucket private, mã hóa, versioning, lifecycle
+    │   ├── s3-bucket/               # bucket private, mã hóa, versioning tùy chọn, lifecycle
+    │   ├── dynamodb-lock-table/     # bảng khóa state cho S3 backend
     │   └── budget/                  # aws_budgets_budget + cảnh báo email
     └── environments/
         └── dev/
@@ -33,7 +34,7 @@ Mỗi root (`bootstrap`, `environments/<env>/<stack>`) có cùng bố cục file
 
 - `terraform.tfvars`: cấu hình của môi trường, **được commit**.
 - `secrets.auto.tfvars`: giá trị riêng tư như email, **bị git-ignore** vì repo đang public. Mẫu nằm ở `secrets.auto.tfvars.example`.
-- Remote state: `s3://apollo-tfstate-<account>-ap-southeast-2/apollo/<env>/<stack>.tfstate`, dùng S3 native lock (`use_lockfile`), không cần DynamoDB.
+- Remote state: `s3://apollo-tfstate-<account>-ap-southeast-2/apollo/<env>/<stack>.tfstate`, khóa bằng bảng DynamoDB `apollo-tflock` (lý do xem phần Ràng buộc SCP bên dưới).
 
 `foundation` và `platform` tách riêng để provider Helm không bao giờ phụ thuộc vào cluster đang được tạo trong cùng lần apply.
 Workload ứng dụng (Triton, MLflow, Model Portal, Grafana stack, ARC runner) **không** nằm ở đây: Argo CD deploy chúng từ GitOps repo.
@@ -50,6 +51,18 @@ Thêm môi trường mới, ví dụ `prod`: copy `environments/dev` sang `envir
 | Không dùng NAT gateway, node đặt trong public subnet | Tiết kiệm khoảng $45/tháng. Inbound vẫn bị security group chặn. |
 | `upgrade_policy = STANDARD` | Không tự rơi vào extended support ($0.60/h thay vì $0.10/h). |
 | Budget **$300/tháng**, lọc theo region Sydney | Account dùng chung, budget toàn account sẽ bị chi phí của team khác chi phối. |
+
+## Ràng buộc SCP của account
+
+Account nằm trong một AWS Organization dùng chung. SCP `p-u1ybnvit` do management account đặt **chặn tuyệt đối** (Admin cũng không vượt được) ba action:
+
+| Action bị chặn | Hệ quả | Cách xử lý |
+| --- | --- | --- |
+| `s3:PutBucketVersioning` | Bucket state và MLflow không bật được versioning | `versioning_enabled = false`. Trước khi thay đổi lớn, backup state: `terraform state pull > backup.tfstate` |
+| `s3:DeleteObject` | S3 native lock (`use_lockfile`) không xóa được file `.tflock`, nên state sẽ bị khóa vĩnh viễn. MLflow không xóa được artifact | Khóa state bằng DynamoDB (`dynamodb_table`). Cảnh báo *deprecated* khi init là bình thường |
+| `s3:DeleteBucket` | `terraform destroy` không xóa được bucket S3 | Nhờ admin của Organization xóa khi kết thúc dự án |
+
+Các action còn lại của EKS, EC2, IAM, ECR, ELB, DynamoDB và Budgets đã được kiểm tra bằng `aws iam simulate-principal-policy` và đều được phép.
 
 ## Service account mà chart phải dùng (đã có quyền AWS sẵn)
 
@@ -122,7 +135,8 @@ Module `eks-node-group` bỏ qua `desired_size` sau khi tạo, nên hai script t
 #    Nếu gỡ controller trước thì NLB bị bỏ lại, VPC sẽ không xóa được.
 kubectl get svc -A --field-selector spec.type=LoadBalancer   # phải trống
 terraform -chdir=environments/dev/platform destroy
-terraform -chdir=environments/dev/foundation apply -var force_destroy_data=true   # cho phép xóa ECR/S3 còn dữ liệu
+terraform -chdir=environments/dev/foundation apply -var force_destroy_data=true   # cho phép xóa ECR còn image
+terraform -chdir=environments/dev/foundation state rm module.mlflow_bucket          # SCP cấm xóa bucket S3
 terraform -chdir=environments/dev/foundation destroy
-# bootstrap: chỉ xóa state bucket khi thật sự kết thúc dự án
+# Bucket MLflow, bucket state và bảng apollo-tflock giữ lại; nhờ admin Organization xóa bucket khi kết thúc dự án.
 ```

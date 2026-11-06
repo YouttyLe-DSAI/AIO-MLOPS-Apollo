@@ -1,13 +1,21 @@
-# One-time stack: S3 bucket holding remote state for every environment/stack.
-# State files are versioned (90 days of history) and the bucket refuses to be destroyed while
-# it still contains state (force_destroy = false).
+# One-time stack: remote-state storage + locking for every environment/stack.
+#
+# This account's org SCP denies s3:PutBucketVersioning, s3:DeleteObject and s3:DeleteBucket, so:
+#   - the state bucket is NOT versioned  -> run `terraform state pull > backup.tfstate` before risky changes
+#   - locking uses DynamoDB, not S3 lockfiles (a .tflock object could never be deleted)
 
 data "aws_caller_identity" "current" {}
 
 module "tfstate_bucket" {
   source = "../modules/s3-bucket"
 
-  name                               = "${var.project}-tfstate-${data.aws_caller_identity.current.account_id}-${var.region}"
-  force_destroy                      = false
-  noncurrent_version_expiration_days = 90
+  name               = "${var.project}-tfstate-${data.aws_caller_identity.current.account_id}-${var.region}"
+  versioning_enabled = false
+  force_destroy      = false
+}
+
+module "tflock_table" {
+  source = "../modules/dynamodb-lock-table"
+
+  name = "${var.project}-tflock"
 }

@@ -1,4 +1,4 @@
-# Private, encrypted, versioned S3 bucket with old versions expiring.
+# Private, encrypted S3 bucket; versioning optional (some org SCPs deny s3:PutBucketVersioning).
 
 resource "aws_s3_bucket" "this" {
   bucket        = var.name
@@ -15,6 +15,8 @@ resource "aws_s3_bucket_public_access_block" "this" {
 }
 
 resource "aws_s3_bucket_versioning" "this" {
+  count = var.versioning_enabled ? 1 : 0
+
   bucket = aws_s3_bucket.this.id
   versioning_configuration {
     status = "Enabled"
@@ -34,14 +36,23 @@ resource "aws_s3_bucket_lifecycle_configuration" "this" {
   bucket = aws_s3_bucket.this.id
 
   rule {
-    id     = "expire-noncurrent-versions"
+    id     = "abort-incomplete-multipart"
     status = "Enabled"
     filter {}
-    noncurrent_version_expiration {
-      noncurrent_days = var.noncurrent_version_expiration_days
-    }
     abort_incomplete_multipart_upload {
       days_after_initiation = 7
+    }
+  }
+
+  dynamic "rule" {
+    for_each = var.versioning_enabled ? [1] : []
+    content {
+      id     = "expire-noncurrent-versions"
+      status = "Enabled"
+      filter {}
+      noncurrent_version_expiration {
+        noncurrent_days = var.noncurrent_version_expiration_days
+      }
     }
   }
 

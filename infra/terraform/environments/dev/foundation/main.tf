@@ -122,11 +122,14 @@ module "ecr" {
   force_delete     = var.force_destroy_data
 }
 
+# Org SCP denies s3:PutBucketVersioning / DeleteObject / DeleteBucket in this account:
+# no versioning, artifacts cannot be deleted, and the bucket survives `terraform destroy`.
 module "mlflow_bucket" {
   source = "../../../modules/s3-bucket"
 
-  name          = "${var.project}-mlflow-${local.account_id}-${var.region}"
-  force_destroy = var.force_destroy_data
+  name               = "${var.project}-mlflow-${local.account_id}-${var.region}"
+  versioning_enabled = false
+  force_destroy      = false
 }
 
 # ---------------------------------------------------------------- Cost guardrail

@@ -2,10 +2,15 @@ output "state_bucket" {
   value = module.tfstate_bucket.bucket
 }
 
+output "lock_table" {
+  value = module.tflock_table.name
+}
+
 output "backend_hcl" {
   description = "terraform output -raw backend_hcl > ../backend.hcl"
   value       = <<-EOT
-    bucket = "${module.tfstate_bucket.bucket}"
-    region = "${var.region}"
+    bucket         = "${module.tfstate_bucket.bucket}"
+    region         = "${var.region}"
+    dynamodb_table = "${module.tflock_table.name}"
   EOT
 }

@@ -123,7 +123,7 @@ variable "ecr_keep_last_images" {
 }
 
 variable "force_destroy_data" {
-  description = "Allow `terraform destroy` to delete non-empty ECR repos and the MLflow bucket. Keep false except at final teardown."
+  description = "Allow `terraform destroy` to delete ECR repos that still hold images. Keep false except at final teardown. (S3 buckets cannot be deleted in this account: org SCP.)"
   type        = bool
   default     = false
 }

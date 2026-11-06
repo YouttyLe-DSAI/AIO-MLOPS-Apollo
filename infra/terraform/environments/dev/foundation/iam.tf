@@ -9,9 +9,10 @@ data "aws_iam_policy_document" "mlflow" {
     actions   = ["s3:ListBucket", "s3:GetBucketLocation"]
     resources = [module.mlflow_bucket.arn]
   }
+  # No s3:DeleteObject: the org SCP denies it anyway, so MLflow artifact GC will not work.
   statement {
     sid       = "ReadWriteArtifacts"
-    actions   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+    actions   = ["s3:GetObject", "s3:PutObject"]
     resources = ["${module.mlflow_bucket.arn}/*"]
   }
 }
