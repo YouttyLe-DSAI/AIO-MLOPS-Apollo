@@ -35,6 +35,7 @@ Mỗi root (`bootstrap`, `environments/<env>/<stack>`) có cùng bố cục file
 - `terraform.tfvars`: cấu hình của môi trường, **được commit**.
 - `secrets.auto.tfvars`: giá trị riêng tư như email, **bị git-ignore** vì repo đang public. Mẫu nằm ở `secrets.auto.tfvars.example`.
 - Remote state: `s3://apollo-tfstate-<account>-ap-southeast-2/apollo/<env>/<stack>.tfstate`, khóa bằng bảng DynamoDB `apollo-tflock` (lý do xem phần Ràng buộc SCP bên dưới).
+  State backend vẫn ở **Sydney** dù hạ tầng đã chuyển sang Seoul: SCP cấm xóa bucket, nên tạo bucket mới chỉ để lại thêm một bucket thừa. Region của backend không ảnh hưởng tới region của resource.
 
 `foundation` và `platform` tách riêng để provider Helm không bao giờ phụ thuộc vào cluster đang được tạo trong cùng lần apply.
 Workload ứng dụng (Triton, MLflow, Model Portal, Grafana stack, ARC runner) **không** nằm ở đây: Argo CD deploy chúng từ GitOps repo.
@@ -45,12 +46,12 @@ Thêm môi trường mới, ví dụ `prod`: copy `environments/dev` sang `envir
 
 | Quyết định | Lý do |
 | --- | --- |
-| Region **ap-southeast-2 (Sydney)**, không phải ap-southeast-1 | `g6.xlarge` (NVIDIA L4) không có ở Singapore. Account cũng đang chạy workload của team khác ở Singapore. |
+| Region **ap-northeast-2 (Seoul)** | `g6.xlarge` (NVIDIA L4) không có ở Singapore. Ngày 2026-11-06, Sydney hết hàng L4 on-demand ở cả 3 AZ (thử 15 phút đều `InsufficientInstanceCapacity`). Seoul còn hàng ở cả 3 AZ (đã probe bằng capacity reservation), giá rẻ hơn ($0.99/giờ) và gần Việt Nam hơn. |
 | GPU node `g6.xlarge` **on-demand**, mặc định **0 node** | Benchmark không bị spot thu hồi giữa chừng. Chỉ bật GPU khi cần. |
-| System node **spot**, 1 AZ (`ap-southeast-2a`) | Rẻ hơn khoảng 60%. Để 1 AZ thì PVC (EBS) luôn gắn lại được sau khi node bị thu hồi. |
+| System node **spot**, 1 AZ (`ap-northeast-2a`) | Rẻ hơn khoảng 60%. Để 1 AZ thì PVC (EBS) luôn gắn lại được sau khi node bị thu hồi. |
 | Không dùng NAT gateway, node đặt trong public subnet | Tiết kiệm khoảng $45/tháng. Inbound vẫn bị security group chặn. |
 | `upgrade_policy = STANDARD` | Không tự rơi vào extended support ($0.60/h thay vì $0.10/h). |
-| Budget **$300/tháng**, lọc theo region Sydney | Account dùng chung, budget toàn account sẽ bị chi phí của team khác chi phối. |
+| Budget **$300/tháng**, lọc theo region Seoul | Account dùng chung, budget toàn account sẽ bị chi phí của team khác chi phối. |
 
 ## Ràng buộc SCP của account
 
@@ -79,7 +80,7 @@ Các action còn lại của EKS, EC2, IAM, ECR, ELB, DynamoDB và Budgets đã 
 Cần AWS CLI v2 (≥ 2.32), Terraform ≥ 1.10, kubectl, helm.
 
 ```bash
-aws login --region ap-southeast-2      # đăng nhập bằng tài khoản console qua trình duyệt, không cần access key
+aws login --region ap-northeast-2      # đăng nhập bằng tài khoản console qua trình duyệt, không cần access key
 infra/scripts/preflight.sh             # chỉ đọc
 ```
 
@@ -110,23 +111,24 @@ kubectl get nodes -L role,node.kubernetes.io/instance-type
 
 ```bash
 infra/scripts/gpu-up.sh      # trước khi build TensorRT / benchmark (~3–5 phút đến khi GPU sẵn sàng)
-infra/scripts/gpu-down.sh    # NGAY sau khi xong, vì L4 tốn ~$1.05/giờ
+infra/scripts/gpu-down.sh    # NGAY sau khi xong, vì L4 tốn ~$0.99/giờ
 ```
 
 Module `eks-node-group` bỏ qua `desired_size` sau khi tạo, nên hai script trên không gây drift.
+Nếu AWS hết hàng GPU (`InsufficientInstanceCapacity`) hoặc node không join được trong 10 phút, `gpu-up.sh` báo lỗi và **tự tắt về 0**, để máy không tự bật lên sau đó mà không ai biết.
 
-## Chi phí ước tính (Sydney, mỗi tháng)
+## Chi phí ước tính (Seoul, mỗi tháng)
 
 | Hạng mục | Chi phí |
 | --- | --- |
 | EKS control plane | $73 |
-| 2× system node spot (m-class large) | ~$69 |
+| 2× system node spot (m-class large, ~$0.026–0.044/giờ) | ~$55 |
 | EBS gp3 2×40 GB + 2 public IPv4 | ~$15 |
-| **Cluster khi không chạy GPU** | **~$157** |
-| GPU L4 on-demand: 4 giờ/ngày × 22 ngày | ~$92 |
-| NLB (khi Triton được expose) | ~$20 |
+| **Cluster khi không chạy GPU** | **~$143** |
+| GPU L4 on-demand ($0.99/giờ): 4 giờ/ngày × 22 ngày | ~$87 |
+| NLB (khi Triton được expose) | ~$17 |
 | ECR + S3 | < $5 |
-| **Tổng** | **~$275**, sát budget $300 |
+| **Tổng** | **~$250**, dưới budget $300 |
 
 ## Gỡ toàn bộ
 

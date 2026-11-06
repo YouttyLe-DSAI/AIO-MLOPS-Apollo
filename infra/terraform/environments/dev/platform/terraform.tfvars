@@ -1,3 +1,3 @@
 environment  = "dev"
-region       = "ap-southeast-2"
+region       = "ap-northeast-2"
 cluster_name = "apollo-mlops"

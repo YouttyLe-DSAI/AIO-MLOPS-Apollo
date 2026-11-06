@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Read-only checks before creating any AWS resource for the Apollo platform.
-# Usage: infra/scripts/preflight.sh [region ...]   (default: ap-southeast-2 ap-southeast-1)
+# Usage: infra/scripts/preflight.sh [region ...]   (default: ap-northeast-2 ap-southeast-2)
 set -uo pipefail
 
-REGIONS=("${@:-ap-southeast-2 ap-southeast-1}")
+REGIONS=("${@:-ap-northeast-2 ap-southeast-2}")
 read -r -a REGIONS <<<"${REGIONS[*]}"
 GPU_TYPE=g6.xlarge          # 1x NVIDIA L4, 4 vCPU, 16 GiB
 GPU_VCPU=4

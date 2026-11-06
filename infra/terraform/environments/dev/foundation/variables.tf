@@ -4,9 +4,9 @@ variable "environment" {
 }
 
 variable "region" {
-  description = "Single region for the whole platform. ap-southeast-2: g6.xlarge (L4) is not offered in ap-southeast-1."
+  description = "Single region for the whole platform. ap-northeast-2: L4 (g6.xlarge) is absent in ap-southeast-1 and was out of capacity in ap-southeast-2."
   type        = string
-  default     = "ap-southeast-2"
+  default     = "ap-northeast-2"
 }
 
 variable "project" {
@@ -33,7 +33,7 @@ variable "vpc_cidr" {
 
 variable "azs" {
   type    = list(string)
-  default = ["ap-southeast-2a", "ap-southeast-2b", "ap-southeast-2c"]
+  default = ["ap-northeast-2a", "ap-northeast-2c", "ap-northeast-2d"]
 }
 
 variable "cluster_endpoint_public_cidrs" {
@@ -47,13 +47,13 @@ variable "cluster_endpoint_public_cidrs" {
 variable "system_node_az" {
   description = "System nodes stay in one AZ so EBS-backed PVCs can always re-attach after a spot interruption."
   type        = string
-  default     = "ap-southeast-2a"
+  default     = "ap-northeast-2a"
 }
 
 variable "system_instance_types" {
   description = "Spot pool for platform services; non-burstable to avoid T-family unlimited-credit charges."
   type        = list(string)
-  default     = ["m5.large", "m5a.large", "m6i.large", "m6a.large", "m7i.large", "m7a.large"]
+  default     = ["m5.large", "m5a.large", "m6i.large", "m7i.large"]
 }
 
 variable "system_node_count" {

@@ -5,7 +5,7 @@ variable "environment" {
 
 variable "region" {
   type    = string
-  default = "ap-southeast-2"
+  default = "ap-northeast-2"
 }
 
 variable "cluster_name" {
