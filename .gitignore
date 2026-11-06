@@ -1,0 +1,18 @@
+# Terraform
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+# Personal / secret values must not land in this public repo.
+# terraform.tfvars (environment config) IS committed; secrets go in secrets.auto.tfvars.
+secrets.auto.tfvars
+*.secret.tfvars
+infra/terraform/backend.hcl
