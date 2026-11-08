@@ -10,5 +10,21 @@ terraform {
       source  = "hashicorp/helm"
       version = "~> 3.3"
     }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 3.5"
+    }
+    random = {
+      source  = "hashicorp/random"
+      version = "~> 3.9"
+    }
+    tls = {
+      source  = "hashicorp/tls"
+      version = "~> 4.4"
+    }
+    github = {
+      source  = "integrations/github"
+      version = "~> 6.13"
+    }
   }
 }

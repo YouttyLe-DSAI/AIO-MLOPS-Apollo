@@ -26,7 +26,8 @@ infra/
     └── environments/
         └── dev/
             ├── foundation/          # gọi các module: network, EKS, node groups, IAM, ECR, S3, budget
-            └── platform/            # Helm: AWS LB Controller, NVIDIA device plugin, Argo CD
+            └── platform/            # Helm: AWS LB Controller, NVIDIA device plugin, Argo CD;
+                                     # GitOps wiring (deploy key, root app) + MLflow namespace/DB secret
 ```
 
 Mỗi root (`bootstrap`, `environments/<env>/<stack>`) có cùng bố cục file:
@@ -38,7 +39,8 @@ Mỗi root (`bootstrap`, `environments/<env>/<stack>`) có cùng bố cục file
   State backend vẫn ở **Sydney** dù hạ tầng đã chuyển sang Seoul: SCP cấm xóa bucket, nên tạo bucket mới chỉ để lại thêm một bucket thừa. Region của backend không ảnh hưởng tới region của resource.
 
 `foundation` và `platform` tách riêng để provider Helm không bao giờ phụ thuộc vào cluster đang được tạo trong cùng lần apply.
-Workload ứng dụng (Triton, MLflow, Model Portal, Grafana stack, ARC runner) **không** nằm ở đây: Argo CD deploy chúng từ GitOps repo.
+Workload ứng dụng (Triton, MLflow, Model Portal, Grafana stack, ARC runner) **không** nằm ở đây: Argo CD deploy chúng từ GitOps repo private [`AIO-MLOPS-Apollo-gitops`](https://github.com/YouttyLe-DSAI/AIO-MLOPS-Apollo-gitops).
+`platform` chỉ tạo phần nền mà Git không được chứa: deploy key read-only cho Argo CD, root app `apollo-dev` (đọc `apps/dev`), namespace và Secret `mlflow-db`.
 
 Thêm môi trường mới, ví dụ `prod`: copy `environments/dev` sang `environments/prod`, sửa `terraform.tfvars` và `key` trong `backend.tf`.
 
@@ -103,7 +105,7 @@ $(terraform -chdir=environments/dev/foundation output -raw kubeconfig_command)
 
 # 3. Platform
 terraform -chdir=environments/dev/platform init -backend-config=../../../backend.hcl
-terraform -chdir=environments/dev/platform apply
+GITHUB_TOKEN=$(gh auth token) terraform -chdir=environments/dev/platform apply   # tạo deploy key trên GitOps repo
 kubectl get nodes -L role,node.kubernetes.io/instance-type
 ```
 
@@ -142,3 +144,14 @@ terraform -chdir=environments/dev/foundation state rm module.mlflow_bucket      
 terraform -chdir=environments/dev/foundation destroy
 # Bucket MLflow, bucket state và bảng apollo-tflock giữ lại; nhờ admin Organization xóa bucket khi kết thúc dự án.
 ```
+
+## Truy cập dịch vụ (không public, đi qua port-forward)
+
+```bash
+kubectl -n mlflow port-forward svc/mlflow 5000:80          # MLflow UI + tracking: http://localhost:5000
+kubectl -n argocd port-forward svc/argocd-server 8080:443  # Argo CD UI: https://localhost:8080 (user admin)
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d
+```
+
+Máy training log lên MLflow bằng `export MLFLOW_TRACKING_URI=http://localhost:5000`. Artifact được upload **qua** MLflow (proxied), nên máy training không cần quyền S3.
+

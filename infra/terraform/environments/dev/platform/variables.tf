@@ -26,3 +26,24 @@ variable "chart_versions" {
     argo_cd                      = "10.14.0" # app v3.6.1
   }
 }
+
+variable "argocd_apps_chart_version" {
+  type    = string
+  default = "2.0.7"
+}
+
+variable "gitops_repo" {
+  description = "Private GitOps repository that Argo CD syncs (read-only deploy key)."
+  type        = object({ owner = string, name = string, revision = string, apps_path = string })
+  default = {
+    owner     = "YouttyLe-DSAI"
+    name      = "AIO-MLOPS-Apollo-gitops"
+    revision  = "main"
+    apps_path = "apps/dev"
+  }
+}
+
+variable "mlflow_namespace" {
+  type    = string
+  default = "mlflow"
+}
