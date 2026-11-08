@@ -1,3 +1,9 @@
+variable "partition" {
+  description = "AWS partition for managed policy ARNs (aws, aws-cn, aws-us-gov)."
+  type        = string
+  default     = "aws"
+}
+
 variable "cluster_name" {
   type = string
 }

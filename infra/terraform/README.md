@@ -53,6 +53,8 @@ Thêm môi trường mới, ví dụ `prod`: copy `environments/dev` sang `envir
 | System node **spot**, 1 AZ (`ap-northeast-2a`) | Rẻ hơn khoảng 60%. Để 1 AZ thì PVC (EBS) luôn gắn lại được sau khi node bị thu hồi. |
 | Không dùng NAT gateway, node đặt trong public subnet | Tiết kiệm khoảng $45/tháng. Inbound vẫn bị security group chặn. |
 | `upgrade_policy = STANDARD` | Không tự rơi vào extended support ($0.60/h thay vì $0.10/h). |
+| UI public qua HTTPS (sslip.io + Let's Encrypt), có đăng nhập | Chỉ Tuấn có quyền AWS, nên các bạn khác cần link public. Một NLB và EIP dùng chung cho mọi UI (~$20/tháng). |
+| Version add-on được pin trong `terraform.tfvars` | Tránh tự nâng cấp add-on khi apply một thay đổi không liên quan. |
 | Budget **$300/tháng**, lọc theo region Seoul | Account dùng chung, budget toàn account sẽ bị chi phí của team khác chi phối. |
 
 ## Ràng buộc SCP của account
@@ -145,13 +147,16 @@ terraform -chdir=environments/dev/foundation destroy
 # Bucket MLflow, bucket state và bảng apollo-tflock giữ lại; nhờ admin Organization xóa bucket khi kết thúc dự án.
 ```
 
-## Truy cập dịch vụ (không public, đi qua port-forward)
+## Truy cập dịch vụ
 
-```bash
-kubectl -n mlflow port-forward svc/mlflow 5000:80          # MLflow UI + tracking: http://localhost:5000
-kubectl -n argocd port-forward svc/argocd-server 8080:443  # Argo CD UI: https://localhost:8080 (user admin)
-kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d
-```
+Các UI được public qua **HTTPS** theo đường: NLB (Elastic IP cố định `3.39.32.158`) → Traefik → Ingress. Chứng chỉ do Let's Encrypt cấp qua cert-manager. HTTP tự chuyển sang HTTPS.
 
-Máy training log lên MLflow bằng `export MLFLOW_TRACKING_URI=http://localhost:5000`. Artifact được upload **qua** MLflow (proxied), nên máy training không cần quyền S3.
+| Dịch vụ | Link | Đăng nhập |
+| --- | --- | --- |
+| MLflow | https://mlflow.3-39-32-158.sslip.io | Tài khoản riêng: `kubectl -n mlflow get secret mlflow-user-<tên> -o jsonpath='{.data.password}' \| base64 -d` |
+| Argo CD | https://argocd.3-39-32-158.sslip.io | `admin`: `kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' \| base64 -d` |
 
+- Hostname lấy từ [sslip.io](https://sslip.io), dựa trên EIP. Nếu sau này có domain thật, chỉ cần đổi `local.base_domain` trong `environments/dev/platform/ingress.tf` và các host trong GitOps repo.
+- Thêm tài khoản MLflow: `infra/scripts/mlflow-create-user.sh <tên>`. Mật khẩu được lưu vào Secret `mlflow/mlflow-user-<tên>`, không in ra màn hình.
+- Máy training: `export MLFLOW_TRACKING_URI=https://mlflow.3-39-32-158.sslip.io MLFLOW_TRACKING_USERNAME=<tên> MLFLOW_TRACKING_PASSWORD=<mật khẩu>`. Artifact được upload qua MLflow, nên máy training không cần quyền AWS.
+- Người có quyền AWS vẫn đi đường nội bộ được: `kubectl -n mlflow port-forward svc/mlflow 5000:80`.

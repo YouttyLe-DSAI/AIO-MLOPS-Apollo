@@ -33,3 +33,12 @@ output "eks_addon_versions" {
 output "kubeconfig_command" {
   value = "aws eks update-kubeconfig --name ${module.eks.name} --region ${var.region} --alias ${module.eks.name}"
 }
+
+output "ingress_public_ip" {
+  value = aws_eip.ingress.public_ip
+}
+
+output "ingress_base_domain" {
+  description = "Base domain for platform UIs, e.g. mlflow.<this>, argocd.<this>"
+  value       = local.ingress_base_domain
+}

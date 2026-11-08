@@ -37,7 +37,7 @@ resource "kubernetes_secret_v1" "argocd_repo_gitops" {
 resource "helm_release" "argocd_apps" {
   name       = "argocd-apps"
   namespace  = helm_release.argo_cd.namespace
-  repository = "https://argoproj.github.io/argo-helm"
+  repository = "oci://ghcr.io/argoproj/argo-helm" # OCI mirror: GitHub release downloads were flaky (504)
   chart      = "argocd-apps"
   version    = var.argocd_apps_chart_version
 
@@ -68,5 +68,7 @@ resource "helm_release" "argocd_apps" {
     github_repository_deploy_key.argocd,
     # Workload prerequisites that must exist before Argo CD syncs the child apps.
     kubernetes_secret_v1.mlflow_db,
+    kubernetes_secret_v1.mlflow_admin,
+    helm_release.cert_manager, # ClusterIssuer CRDs for envs/dev/cluster-config
   ]
 }

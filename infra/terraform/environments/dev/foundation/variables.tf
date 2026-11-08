@@ -139,3 +139,8 @@ variable "budget_alert_emails" {
   description = "Recipients of budget alerts. Set in secrets.auto.tfvars (git-ignored: the repo is public)."
   type        = list(string)
 }
+
+variable "addon_versions" {
+  description = "Pinned EKS add-on versions. Bump deliberately (aws eks describe-addon-versions) and review the plan."
+  type        = map(string)
+}

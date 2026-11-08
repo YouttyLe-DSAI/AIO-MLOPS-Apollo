@@ -35,9 +35,9 @@ module "addons_core" {
   cluster_name       = module.eks.name
   kubernetes_version = module.eks.kubernetes_version
   addons = {
-    vpc-cni                = {}
-    kube-proxy             = {}
-    eks-pod-identity-agent = {}
+    vpc-cni                = { version = var.addon_versions["vpc-cni"] }
+    kube-proxy             = { version = var.addon_versions["kube-proxy"] }
+    eks-pod-identity-agent = { version = var.addon_versions["eks-pod-identity-agent"] }
   }
 }
 
@@ -96,9 +96,10 @@ module "addons" {
   cluster_name       = module.eks.name
   kubernetes_version = module.eks.kubernetes_version
   addons = {
-    coredns        = {}
-    metrics-server = {}
+    coredns        = { version = var.addon_versions["coredns"] }
+    metrics-server = { version = var.addon_versions["metrics-server"] }
     aws-ebs-csi-driver = {
+      version = var.addon_versions["aws-ebs-csi-driver"]
       # Creates a default gp3 StorageClass for PVCs (MLflow Postgres, Grafana stack).
       configuration_values = jsonencode({ defaultStorageClass = { enabled = true } })
       pod_identity = {

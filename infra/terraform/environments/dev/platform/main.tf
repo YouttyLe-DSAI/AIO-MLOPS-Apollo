@@ -44,18 +44,31 @@ resource "helm_release" "argo_cd" {
   name             = "argocd"
   namespace        = "argocd"
   create_namespace = true
-  repository       = "https://argoproj.github.io/argo-helm"
+  repository       = "oci://ghcr.io/argoproj/argo-helm" # OCI mirror: GitHub release downloads were flaky (504)
   chart            = "argo-cd"
   version          = var.chart_versions.argo_cd
 
   values = [yamlencode({
-    global = { nodeSelector = { role = "system" } }
-    dex    = { enabled = false } # no SSO; log in with the initial admin secret
+    global = {
+      domain       = local.hosts.argocd
+      nodeSelector = { role = "system" }
+    }
+    dex = { enabled = false } # no SSO; log in with the initial admin secret
+    # TLS terminates at Traefik; argocd-server speaks plain HTTP behind it (avoids redirect loops).
+    configs = { params = { "server.insecure" = true } }
+    server = {
+      ingress = {
+        enabled          = true
+        ingressClassName = "traefik"
+        annotations      = { "cert-manager.io/cluster-issuer" = local.cluster_issuer }
+        tls              = true
+      }
+    }
   })]
 
   wait    = true
   timeout = 900
 
   # The LB controller registers a webhook on Services; it must be serving before Argo CD creates any.
-  depends_on = [helm_release.aws_load_balancer_controller]
+  depends_on = [helm_release.aws_load_balancer_controller, helm_release.traefik]
 }

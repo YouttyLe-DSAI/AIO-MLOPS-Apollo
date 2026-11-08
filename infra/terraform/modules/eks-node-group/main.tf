@@ -1,18 +1,19 @@
-data "aws_partition" "current" {}
-
-data "aws_iam_policy_document" "assume" {
-  statement {
-    actions = ["sts:AssumeRole"]
-    principals {
-      type        = "Service"
-      identifiers = ["ec2.amazonaws.com"]
-    }
-  }
+# No data sources in this module: callers use module-level depends_on, which would defer any
+# data source to apply time and force the policy attachments below to be replaced on every apply.
+locals {
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Action    = "sts:AssumeRole"
+      Principal = { Service = "ec2.amazonaws.com" }
+    }]
+  })
 }
 
 resource "aws_iam_role" "node" {
   name               = "${var.cluster_name}-${var.name}-node"
-  assume_role_policy = data.aws_iam_policy_document.assume.json
+  assume_role_policy = local.assume_role_policy
   tags               = var.tags
 }
 
@@ -24,7 +25,7 @@ resource "aws_iam_role_policy_attachment" "node" {
   ])
 
   role       = aws_iam_role.node.name
-  policy_arn = "arn:${data.aws_partition.current.partition}:iam::aws:policy/${each.value}"
+  policy_arn = "arn:${var.partition}:iam::aws:policy/${each.value}"
 }
 
 # gp3 + encrypted root volume, IMDSv2 only, and tags on the EC2 instances and volumes

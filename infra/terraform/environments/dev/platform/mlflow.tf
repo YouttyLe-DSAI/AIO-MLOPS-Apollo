@@ -28,3 +28,21 @@ resource "kubernetes_secret_v1" "mlflow_db" {
     password = random_password.mlflow_db.result
   }
 }
+
+# Admin account for MLflow's built-in basic auth (the UI is public behind HTTPS).
+resource "random_password" "mlflow_admin" {
+  length  = 24
+  special = false
+}
+
+resource "kubernetes_secret_v1" "mlflow_admin" {
+  metadata {
+    name      = "mlflow-admin"
+    namespace = kubernetes_namespace_v1.mlflow.metadata[0].name
+  }
+
+  data = {
+    username = "admin"
+    password = random_password.mlflow_admin.result
+  }
+}

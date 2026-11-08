@@ -16,3 +16,7 @@ output "mlflow_access" {
 output "gitops_repo" {
   value = "https://github.com/${var.gitops_repo.owner}/${var.gitops_repo.name}"
 }
+
+output "urls" {
+  value = { for k, h in local.hosts : k => "https://${h}" }
+}
