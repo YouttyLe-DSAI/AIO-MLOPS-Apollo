@@ -87,3 +87,46 @@ module "pod_identity_gpu_runner" {
   service_account = var.gpu_runner_service_account.name
   inline_policies = { BuildAndPushTriton = data.aws_iam_policy_document.gpu_runner.json }
 }
+
+# ---------------------------------------------------------------- Cluster Autoscaler
+
+# Read-only discovery anywhere; scaling actions only on Auto Scaling groups tagged for this cluster
+# (EKS managed node groups carry k8s.io/cluster-autoscaler/<cluster> = owned).
+data "aws_iam_policy_document" "cluster_autoscaler" {
+  statement {
+    sid = "Discover"
+    actions = [
+      "autoscaling:DescribeAutoScalingGroups",
+      "autoscaling:DescribeAutoScalingInstances",
+      "autoscaling:DescribeLaunchConfigurations",
+      "autoscaling:DescribeScalingActivities",
+      "autoscaling:DescribeTags",
+      "ec2:DescribeImages",
+      "ec2:DescribeInstanceTypes",
+      "ec2:DescribeLaunchTemplateVersions",
+      "ec2:GetInstanceTypesFromInstanceRequirements",
+      "eks:DescribeNodegroup",
+    ]
+    resources = ["*"]
+  }
+  statement {
+    sid       = "ScaleOwnNodeGroups"
+    actions   = ["autoscaling:SetDesiredCapacity", "autoscaling:TerminateInstanceInAutoScalingGroup"]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      variable = "aws:ResourceTag/k8s.io/cluster-autoscaler/${var.cluster_name}"
+      values   = ["owned"]
+    }
+  }
+}
+
+module "pod_identity_cluster_autoscaler" {
+  source = "../../../modules/pod-identity"
+
+  name            = "${var.cluster_name}-cluster-autoscaler"
+  cluster_name    = module.eks.name
+  namespace       = "kube-system"
+  service_account = "cluster-autoscaler"
+  inline_policies = { ClusterAutoscaler = data.aws_iam_policy_document.cluster_autoscaler.json }
+}

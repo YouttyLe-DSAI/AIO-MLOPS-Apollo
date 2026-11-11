@@ -86,6 +86,14 @@ module "node_group_gpu" {
   taints = [{ key = "nvidia.com/gpu", value = "true", effect = "NO_SCHEDULE" }]
   tags   = local.tags
 
+  # Cluster Autoscaler starts this group from 0 when a pod asks for nvidia.com/gpu (and stops it when idle);
+  # these hints describe a node of the group while none is running.
+  autoscaler_node_template = {
+    labels    = { role = "gpu", "nvidia.com/gpu.present" = "true" }
+    taints    = { "nvidia.com/gpu" = "true:NoSchedule" }
+    resources = { "nvidia.com/gpu" = "1" }
+  }
+
   depends_on = [module.addons_core]
 }
 

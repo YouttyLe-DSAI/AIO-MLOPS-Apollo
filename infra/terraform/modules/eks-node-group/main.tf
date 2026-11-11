@@ -109,3 +109,24 @@ resource "aws_eks_node_group" "this" {
 
   depends_on = [aws_iam_role_policy_attachment.node]
 }
+
+# Scale-from-zero hints for Cluster Autoscaler, as tags on the node group's Auto Scaling group.
+locals {
+  autoscaler_template_tags = merge(
+    { for k, v in var.autoscaler_node_template.labels : "k8s.io/cluster-autoscaler/node-template/label/${k}" => v },
+    { for k, v in var.autoscaler_node_template.taints : "k8s.io/cluster-autoscaler/node-template/taint/${k}" => v },
+    { for k, v in var.autoscaler_node_template.resources : "k8s.io/cluster-autoscaler/node-template/resources/${k}" => v },
+  )
+}
+
+resource "aws_autoscaling_group_tag" "autoscaler_template" {
+  for_each = local.autoscaler_template_tags
+
+  autoscaling_group_name = aws_eks_node_group.this.resources[0].autoscaling_groups[0].name
+
+  tag {
+    key                 = each.key
+    value               = each.value
+    propagate_at_launch = false
+  }
+}

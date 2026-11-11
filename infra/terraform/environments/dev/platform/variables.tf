@@ -21,6 +21,7 @@ variable "chart_versions" {
     argo_cd                      = string
     cert_manager                 = string
     traefik                      = string
+    cluster_autoscaler           = string
   })
   default = {
     aws_load_balancer_controller = "3.6.2"   # app v3.6.2 — must match the IAM policy file in 10-foundation/policies
@@ -28,6 +29,7 @@ variable "chart_versions" {
     argo_cd                      = "10.14.0" # app v3.6.1
     cert_manager                 = "v1.21.3"
     traefik                      = "42.3.1" # app v3.7.17 (ingress-nginx is retired since 2026-03)
+    cluster_autoscaler           = "9.60.0" # chart ships CA 1.37; image pinned to 1.36 below
   }
 }
 
@@ -56,4 +58,10 @@ variable "ingress_az" {
   description = "AZ of the single-subnet ingress NLB; must be where Traefik (system nodes) runs."
   type        = string
   default     = "ap-northeast-2a"
+}
+
+variable "cluster_autoscaler_image_tag" {
+  description = "Cluster Autoscaler image; its minor version must match the Kubernetes version (1.36)."
+  type        = string
+  default     = "v1.36.2"
 }
