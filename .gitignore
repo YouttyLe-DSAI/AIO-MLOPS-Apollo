@@ -1,3 +1,28 @@
+# Python / ML artifacts. Large files go to MLflow (S3), never to Git (this repo is public).
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ipynb_checkpoints/
+data/
+mlruns/
+model_versions/
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.plan
+*.engine
+*.npy
+*.npz
+*.tar.gz
+*.pem
+.env
+results/*
+!results/README.md
+triton_models/*
+!triton_models/README.md
+
 # Terraform
 **/.terraform/*
 *.tfstate
