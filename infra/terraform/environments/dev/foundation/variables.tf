@@ -151,6 +151,15 @@ variable "github_repository" {
   default     = "YouttyLe-DSAI/AIO-MLOPS-Apollo"
 }
 
+variable "github_repository_ids" {
+  description = "Numeric owner/repository IDs; the repository uses immutable OIDC subjects (see modules/github-actions-role)."
+  type = object({
+    owner      = number
+    repository = number
+  })
+  default = null
+}
+
 variable "release_namespace" {
   description = "Kubernetes namespace where release Jobs run; the GitHub Actions role may only edit this namespace."
   type        = string
