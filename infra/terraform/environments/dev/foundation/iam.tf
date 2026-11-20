@@ -35,7 +35,7 @@ data "aws_iam_policy_document" "gpu_runner" {
       "ecr:PutImage",
       "ecr:DescribeImages",
     ]
-    resources = [for r in module.ecr : r.arn]
+    resources = [module.ecr["resnet18-triton"].arn] # Serving image only
   }
   statement {
     sid       = "ReadOnnxFromMlflow"
@@ -146,7 +146,22 @@ data "aws_iam_policy_document" "github_release" {
   statement {
     sid       = "SkipAlreadyReleasedVersions"
     actions   = ["ecr:DescribeImages"]
-    resources = [for r in module.ecr : r.arn]
+    resources = [module.ecr["resnet18-triton"].arn]
+  }
+  # .github/workflows/portal.yml builds the Model Portal image on the GitHub runner (small CPU-only
+  # image; the Serving image is built in-cluster on the L4 instead).
+  statement {
+    sid       = "EcrLogin"
+    actions   = ["ecr:GetAuthorizationToken"]
+    resources = ["*"]
+  }
+  statement {
+    sid = "PushModelPortalImage"
+    actions = [
+      "ecr:BatchCheckLayerAvailability", "ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer",
+      "ecr:InitiateLayerUpload", "ecr:UploadLayerPart", "ecr:CompleteLayerUpload", "ecr:PutImage",
+    ]
+    resources = [module.ecr["model-portal"].arn]
   }
 }
 

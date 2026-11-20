@@ -1,0 +1,66 @@
+# One benchmark = one Job (rendered by run_benchmark.sh; ${...} are substituted there).
+# Load generator on a system node (not the L4 node), so Perf Analyzer never competes with Triton
+# for the g6.xlarge's 4 vCPUs; it reaches Triton through the in-cluster Service.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ${JOB_NAME}
+  namespace: ${NAMESPACE}
+  labels:
+    app.kubernetes.io/name: benchmark
+    app.kubernetes.io/part-of: apollo
+  annotations:
+    apollo/registered-model: "${MODEL_NAME}"
+    apollo/model-version: "${MODEL_VERSION}"
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 5400
+  ttlSecondsAfterFinished: 604800
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: benchmark
+    spec:
+      restartPolicy: Never
+      nodeSelector:
+        role: system
+      volumes:
+        - name: work
+          emptyDir:
+            sizeLimit: 5Gi
+        - name: scripts
+          configMap:
+            name: benchmark-scripts
+        - name: cache          # CIFAR-10 test batch, downloaded once (Terraform: platform/release.tf)
+          persistentVolumeClaim:
+            claimName: benchmark-cache
+      containers:
+        - name: benchmark
+          image: nvcr.io/nvidia/tritonserver:26.09-py3-sdk   # perf_analyzer + tritonclient 26.09 (= Triton 2.73.0)
+          command: ["sh", "-c"]
+          args:
+            - pip install -q --no-cache-dir --disable-pip-version-check "mlflow-skinny==3.16.0" pyyaml
+              && exec python3 /scripts/benchmark.py
+          env:
+            - { name: PIP_BREAK_SYSTEM_PACKAGES, value: "1" }
+            - { name: MODEL_NAME, value: "${MODEL_NAME}" }
+            - { name: MODEL_VERSION, value: "${MODEL_VERSION}" }
+            - { name: TRITON_IMAGE, value: "${TRITON_IMAGE}" }
+            - { name: TRITON_HTTP, value: "triton.serving.svc.cluster.local:8000" }
+            - { name: TRITON_METRICS, value: "http://triton.serving.svc.cluster.local:8002/metrics" }
+            - { name: MIMIR_URL, value: "http://mimir.monitoring.svc:9009/prometheus" }
+            - { name: WAIT_READY_S, value: "1500" }   # Argo CD sync + GPU node scale-up + 9 GB image pull
+            - { name: MLFLOW_TRACKING_URI, value: "http://mlflow.mlflow.svc.cluster.local" }
+            - name: MLFLOW_TRACKING_USERNAME
+              valueFrom: { secretKeyRef: { name: mlflow-release-bot, key: username } }
+            - name: MLFLOW_TRACKING_PASSWORD
+              valueFrom: { secretKeyRef: { name: mlflow-release-bot, key: password } }
+            - name: NODE_NAME
+              valueFrom: { fieldRef: { fieldPath: spec.nodeName } }
+          resources:
+            requests: { cpu: "1", memory: 2Gi }
+            limits: { memory: 4Gi }
+          volumeMounts:
+            - { name: work, mountPath: /work }
+            - { name: scripts, mountPath: /scripts }
+            - { name: cache, mountPath: /cache }

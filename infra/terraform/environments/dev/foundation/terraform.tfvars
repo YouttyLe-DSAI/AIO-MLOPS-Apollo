@@ -15,7 +15,7 @@ gpu_instance_type = "g6.xlarge"
 gpu_node_max      = 2 # a release Job can build while Triton holds the first L4
 gpu_disk_gb       = 200
 
-ecr_repositories     = ["resnet18-triton"]
+ecr_repositories     = ["resnet18-triton", "model-portal"]
 ecr_keep_last_images = 15
 
 budget_limit_usd = 300

@@ -114,7 +114,7 @@ variable "gpu_runner_service_account" {
 
 variable "ecr_repositories" {
   type    = list(string)
-  default = ["resnet18-triton"]
+  default = ["resnet18-triton", "model-portal"]
 }
 
 variable "ecr_keep_last_images" {

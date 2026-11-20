@@ -8,10 +8,13 @@ Owner: Tuấn (Integration & Release).
 ```
 infra/
 ├── release/                         # release pipeline: MLflow Model version → Engine → image → ECR (xem release/README.md)
+├── benchmark/                       # Benchmark Job: Smoke test + Perf Analyzer trên Triton của cluster → MLflow
+├── TEARDOWN.md                      # kế hoạch gỡ hạ tầng sau bàn giao
 ├── scripts/
 │   ├── preflight.sh                 # chỉ đọc: identity, quota GPU, region, tài nguyên đang có
 │   ├── gpu-up.sh / gpu-down.sh      # bật / tắt node L4 bằng tay (bình thường Cluster Autoscaler tự làm)
-│   └── mlflow-create-user.sh        # tạo tài khoản MLflow, mật khẩu lưu trong Secret
+│   ├── mlflow-create-user.sh        # tạo tài khoản MLflow, mật khẩu lưu trong Secret
+│   └── teardown.sh                  # backup / destroy / verify (xem TEARDOWN.md)
 └── terraform/
     ├── backend.hcl.example          # bucket + region của remote state (copy thành backend.hcl)
     ├── bootstrap/                   # S3 bucket chứa remote state (chạy 1 lần, state local)
@@ -151,16 +154,16 @@ Nếu AWS hết hàng GPU (`InsufficientInstanceCapacity`), CA thử lại sau `
 
 ## Gỡ toàn bộ
 
+Kế hoạch, checklist và lịch gỡ nằm trong [`infra/TEARDOWN.md`](../TEARDOWN.md). Tóm tắt:
+
 ```bash
-# 0. Xóa các Application trong Argo CD trước, để LB controller kịp xóa NLB của Triton.
-#    Nếu gỡ controller trước thì NLB bị bỏ lại, VPC sẽ không xóa được.
-kubectl get svc -A --field-selector spec.type=LoadBalancer   # phải trống
-terraform -chdir=environments/dev/platform destroy
-terraform -chdir=environments/dev/foundation apply -var force_destroy_data=true   # cho phép xóa ECR còn image
-terraform -chdir=environments/dev/foundation state rm module.mlflow_bucket          # SCP cấm xóa bucket S3
-terraform -chdir=environments/dev/foundation destroy
-# Bucket MLflow, bucket state và bảng apollo-tflock giữ lại; nhờ admin Organization xóa bucket khi kết thúc dự án.
+infra/scripts/teardown.sh backup    # dump Postgres của MLflow (local + S3), inventory
+infra/scripts/teardown.sh destroy   # Argo CD apps -> PVC/EBS -> platform -> foundation (hỏi xác nhận)
+infra/scripts/teardown.sh verify    # chỉ còn bucket S3 MLflow
 ```
+
+Thứ tự quan trọng: xóa app Argo CD và PVC trước, khi LB controller và EBS CSI driver còn chạy; nếu không NLB và volume EBS sẽ bị bỏ lại và vẫn tính tiền.
+Bucket S3 (MLflow, state) và bảng `apollo-tflock` được giữ lại; nhờ admin Organization xóa bucket khi kết thúc dự án.
 
 ## Truy cập dịch vụ
 
@@ -170,6 +173,7 @@ Các UI được public qua **HTTPS** theo đường: NLB (Elastic IP cố đị
 | --- | --- | --- |
 | MLflow | https://mlflow.3-39-32-158.sslip.io | Tài khoản riêng: `kubectl -n mlflow get secret mlflow-user-<tên> -o jsonpath='{.data.password}' \| base64 -d` |
 | Argo CD | https://argocd.3-39-32-158.sslip.io | `admin`: `kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' \| base64 -d` |
+| Model Portal | https://portal.3-39-32-158.sslip.io | Tài khoản MLflow. Nút Release/Benchmark cần Secret `portal/portal-github` (xem `portal/README.md`) |
 | Grafana | https://grafana.3-39-32-158.sslip.io | `admin`: `kubectl -n monitoring get secret grafana-admin -o jsonpath='{.data.admin-password}' \| base64 -d` |
 
 Grafana có hai datasource, Mimir (metrics, giữ 7 ngày) và Loki (log pod), cùng hai dashboard: *Apollo · Triton serving* và *NVIDIA DCGM Exporter*. Alloy scrape mọi pod có annotation `prometheus.io/scrape: "true"`.
