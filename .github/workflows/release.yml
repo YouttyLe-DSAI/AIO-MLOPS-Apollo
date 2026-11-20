@@ -1,0 +1,73 @@
+# Release one MLflow Model version to the dev cluster (architecture: GitHub Actions -> GPU job -> ECR -> GitOps).
+#   1. AWS via OIDC (role AWS_RELEASE_ROLE_ARN: EKS describe + ECR describe, Edit in namespace "release" only)
+#   2. infra/release/run_release.sh: Kubernetes Job on the L4 builds the TensorRT Engine and the
+#      Serving image (tag = model_version_id from meta.yaml) and pushes it to ECR
+#   3. pin that tag in the GitOps repo (envs/dev/triton/values.yaml); Argo CD deploys Triton and runs
+#      the smoke test
+name: release
+
+on:
+  workflow_dispatch:
+    inputs:
+      model_name:
+        description: Registered model in MLflow
+        required: true
+        default: resnet18-cifar10
+      model_version:
+        description: Version number in the MLflow registry (e.g. 1)
+        required: true
+
+permissions:
+  id-token: write   # OIDC token for AWS
+  contents: read
+
+concurrency:
+  group: release-dev
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-northeast-2
+  CLUSTER_NAME: apollo-mlops
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_RELEASE_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: kubeconfig
+        run: aws eks update-kubeconfig --name "$CLUSTER_NAME" --region "$AWS_REGION"
+
+      - name: Build TensorRT Engine + Serving image on the L4
+        id: build
+        run: infra/release/run_release.sh "${{ inputs.model_name }}" "${{ inputs.model_version }}"
+
+      - name: Check out the GitOps repo
+        uses: actions/checkout@v4
+        with:
+          repository: YouttyLe-DSAI/AIO-MLOPS-Apollo-gitops
+          ssh-key: ${{ secrets.GITOPS_DEPLOY_KEY }}
+          path: gitops
+
+      - name: Pin the Serving image tag (Argo CD deploys it)
+        env:
+          TAG: ${{ steps.build.outputs.image_tag }}
+          MODEL: ${{ inputs.model_name }}
+          VERSION: ${{ inputs.model_version }}
+        run: |
+          cd gitops
+          FILE=envs/dev/triton/values.yaml
+          sed -i -E "s|^(  tag: ).*(# release-tag)$|\1\"${TAG}\"  \2|" "$FILE"
+          grep -n 'release-tag' "$FILE"
+          git config user.name  "apollo-release[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet; then echo "Triton already runs ${TAG}"; exit 0; fi
+          git commit -am "release: ${TAG} (MLflow ${MODEL} v${VERSION}, run ${GITHUB_RUN_ID})"
+          git push
+          echo "### Released \`${TAG}\` (MLflow ${MODEL} v${VERSION})" >> "$GITHUB_STEP_SUMMARY"

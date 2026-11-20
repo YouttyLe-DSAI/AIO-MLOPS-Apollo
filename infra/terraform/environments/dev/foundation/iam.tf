@@ -87,3 +87,76 @@ module "pod_identity_gpu_runner" {
   service_account = var.gpu_runner_service_account.name
   inline_policies = { BuildAndPushTriton = data.aws_iam_policy_document.gpu_runner.json }
 }
+
+# ---------------------------------------------------------------- Cluster Autoscaler
+
+# Read-only discovery anywhere; scaling actions only on Auto Scaling groups tagged for this cluster
+# (EKS managed node groups carry k8s.io/cluster-autoscaler/<cluster> = owned).
+data "aws_iam_policy_document" "cluster_autoscaler" {
+  statement {
+    sid = "Discover"
+    actions = [
+      "autoscaling:DescribeAutoScalingGroups",
+      "autoscaling:DescribeAutoScalingInstances",
+      "autoscaling:DescribeLaunchConfigurations",
+      "autoscaling:DescribeScalingActivities",
+      "autoscaling:DescribeTags",
+      "ec2:DescribeImages",
+      "ec2:DescribeInstanceTypes",
+      "ec2:DescribeLaunchTemplateVersions",
+      "ec2:GetInstanceTypesFromInstanceRequirements",
+      "eks:DescribeNodegroup",
+    ]
+    resources = ["*"]
+  }
+  statement {
+    sid       = "ScaleOwnNodeGroups"
+    actions   = ["autoscaling:SetDesiredCapacity", "autoscaling:TerminateInstanceInAutoScalingGroup"]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      variable = "aws:ResourceTag/k8s.io/cluster-autoscaler/${var.cluster_name}"
+      values   = ["owned"]
+    }
+  }
+}
+
+module "pod_identity_cluster_autoscaler" {
+  source = "../../../modules/pod-identity"
+
+  name            = "${var.cluster_name}-cluster-autoscaler"
+  cluster_name    = module.eks.name
+  namespace       = "kube-system"
+  service_account = "cluster-autoscaler"
+  inline_policies = { ClusterAutoscaler = data.aws_iam_policy_document.cluster_autoscaler.json }
+}
+
+# ---------------------------------------------------------------- GitHub Actions (release workflow)
+
+locals {
+  cluster_arn = "arn:${local.partition}:eks:${var.region}:${local.account_id}:cluster/${var.cluster_name}"
+}
+
+data "aws_iam_policy_document" "github_release" {
+  statement {
+    sid       = "Kubeconfig"
+    actions   = ["eks:DescribeCluster"]
+    resources = [local.cluster_arn]
+  }
+  statement {
+    sid       = "SkipAlreadyReleasedVersions"
+    actions   = ["ecr:DescribeImages"]
+    resources = [for r in module.ecr : r.arn]
+  }
+}
+
+# Assumed by .github/workflows/release.yml on main through OIDC: no AWS keys stored in GitHub.
+# Inside the cluster it may only edit the release namespace (see namespaced_access in main.tf).
+module "github_release_role" {
+  source = "../../../modules/github-actions-role"
+
+  name            = "${var.cluster_name}-github-release"
+  repository      = var.github_repository
+  allowed_refs    = ["refs/heads/main"]
+  inline_policies = { Release = data.aws_iam_policy_document.github_release.json }
+}

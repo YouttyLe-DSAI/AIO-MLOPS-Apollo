@@ -26,6 +26,15 @@ module "eks" {
   subnet_ids                   = module.vpc.public_subnet_ids
   endpoint_public_access_cidrs = var.cluster_endpoint_public_cidrs
   admin_principal_arns         = var.cluster_admin_principal_arns
+
+  # GitHub Actions release workflow: create/watch Jobs in the release namespace only.
+  namespaced_access = {
+    github-release = {
+      principal_arn = module.github_release_role.role_arn
+      policy        = "AmazonEKSEditPolicy"
+      namespaces    = [var.release_namespace]
+    }
+  }
 }
 
 # Needed before any node can become Ready.
@@ -85,6 +94,14 @@ module "node_group_gpu" {
   }
   taints = [{ key = "nvidia.com/gpu", value = "true", effect = "NO_SCHEDULE" }]
   tags   = local.tags
+
+  # Cluster Autoscaler starts this group from 0 when a pod asks for nvidia.com/gpu (and stops it when idle);
+  # these hints describe a node of the group while none is running.
+  autoscaler_node_template = {
+    labels    = { role = "gpu", "nvidia.com/gpu.present" = "true" }
+    taints    = { "nvidia.com/gpu" = "true:NoSchedule" }
+    resources = { "nvidia.com/gpu" = "1" }
+  }
 
   depends_on = [module.addons_core]
 }

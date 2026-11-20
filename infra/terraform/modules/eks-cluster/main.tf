@@ -73,3 +73,26 @@ resource "aws_eks_access_policy_association" "admin" {
     type = "cluster"
   }
 }
+
+# Namespace-scoped access (least privilege for automation such as CI/CD).
+resource "aws_eks_access_entry" "namespaced" {
+  for_each = var.namespaced_access
+
+  cluster_name  = aws_eks_cluster.this.name
+  principal_arn = each.value.principal_arn
+  type          = "STANDARD"
+  tags          = var.tags
+}
+
+resource "aws_eks_access_policy_association" "namespaced" {
+  for_each = var.namespaced_access
+
+  cluster_name  = aws_eks_cluster.this.name
+  principal_arn = aws_eks_access_entry.namespaced[each.key].principal_arn
+  policy_arn    = "arn:${data.aws_partition.current.partition}:eks::aws:cluster-access-policy/${each.value.policy}"
+
+  access_scope {
+    type       = "namespace"
+    namespaces = each.value.namespaces
+  }
+}

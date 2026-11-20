@@ -42,3 +42,16 @@ variable "tags" {
   type    = map(string)
   default = {}
 }
+
+variable "namespaced_access" {
+  description = <<-EOT
+    IAM principals that get an EKS access policy limited to some namespaces, e.g. a CI role that may
+    only create Jobs in "release": { ci = { principal_arn = "...", policy = "AmazonEKSEditPolicy", namespaces = ["release"] } }.
+  EOT
+  type = map(object({
+    principal_arn = string
+    policy        = string
+    namespaces    = list(string)
+  }))
+  default = {}
+}

@@ -1,0 +1,32 @@
+# Checks on every PR: Terraform formatting/validation (no AWS access needed) and shell/Python syntax.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.17.1
+      - run: terraform fmt -check -recursive infra/terraform
+      - name: validate every root
+        run: |
+          for d in infra/terraform/bootstrap infra/terraform/environments/dev/foundation infra/terraform/environments/dev/platform; do
+            echo "== $d"; terraform -chdir="$d" init -backend=false -input=false >/dev/null && terraform -chdir="$d" validate
+          done
+
+  scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: for f in infra/scripts/*.sh infra/release/*.sh; do bash -n "$f" && echo "ok $f"; done
+      - run: python3 -m py_compile infra/release/*.py && echo ok

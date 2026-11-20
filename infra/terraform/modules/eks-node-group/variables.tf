@@ -73,3 +73,17 @@ variable "tags" {
   type    = map(string)
   default = {}
 }
+
+variable "autoscaler_node_template" {
+  description = <<-EOT
+    What a node of this group looks like, for Cluster Autoscaler scale-from-zero (written as ASG tags
+    k8s.io/cluster-autoscaler/node-template/...). Needed when min_size = 0: with no running node the
+    autoscaler cannot see the group's labels, taints or extended resources such as nvidia.com/gpu.
+  EOT
+  type = object({
+    labels    = optional(map(string), {})
+    taints    = optional(map(string), {}) # key => "value:Effect", e.g. "true:NoSchedule"
+    resources = optional(map(string), {}) # e.g. { "nvidia.com/gpu" = "1" }
+  })
+  default = {}
+}
