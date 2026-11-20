@@ -11,7 +11,13 @@ resource "aws_iam_openid_connect_provider" "github" {
 
 locals {
   oidc_provider_arn = var.create_oidc_provider ? aws_iam_openid_connect_provider.github[0].arn : var.oidc_provider_arn
-  subjects          = [for ref in var.allowed_refs : "repo:${var.repository}:ref:${ref}"]
+
+  # Immutable subjects pin the numeric owner/repo IDs, so a renamed or re-created repository with
+  # the same name cannot assume the role.
+  owner_name     = split("/", var.repository)[0]
+  repo_name      = split("/", var.repository)[1]
+  subject_prefix = var.repository_ids == null ? "repo:${var.repository}" : "repo:${local.owner_name}@${var.repository_ids.owner}/${local.repo_name}@${var.repository_ids.repository}"
+  subjects       = [for ref in var.allowed_refs : "${local.subject_prefix}:ref:${ref}"]
 }
 
 resource "aws_iam_role" "this" {

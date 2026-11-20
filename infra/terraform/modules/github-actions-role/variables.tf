@@ -8,6 +8,20 @@ variable "repository" {
   type        = string
 }
 
+variable "repository_ids" {
+  description = <<-EOT
+    Numeric GitHub IDs { owner = ..., repository = ... } when the repository uses immutable OIDC
+    subjects (`gh api repos/<owner>/<name>/actions/oidc/customization/sub` shows
+    use_immutable_subject = true). The sub claim is then repo:<owner>@<owner_id>/<name>@<repo_id>:ref:...
+    null = classic subject repo:<owner>/<name>:ref:...
+  EOT
+  type = object({
+    owner      = number
+    repository = number
+  })
+  default = null
+}
+
 variable "allowed_refs" {
   description = "Git refs whose workflows may assume the role, e.g. [\"refs/heads/main\"]."
   type        = list(string)

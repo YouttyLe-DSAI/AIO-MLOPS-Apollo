@@ -157,6 +157,7 @@ module "github_release_role" {
 
   name            = "${var.cluster_name}-github-release"
   repository      = var.github_repository
+  repository_ids  = var.github_repository_ids
   allowed_refs    = ["refs/heads/main"]
   inline_policies = { Release = data.aws_iam_policy_document.github_release.json }
 }

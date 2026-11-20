@@ -32,3 +32,7 @@ addon_versions = {
 
 # Release Job (GitHub Actions -> Kubernetes Job on the L4): ECR push + MLflow artifact read
 gpu_runner_service_account = { namespace = "release", name = "release-builder" }
+
+# GitHub Actions release role. The repo uses immutable OIDC subjects (sub = repo:owner@<id>/name@<id>:ref:...);
+# IDs from: gh api repos/YouttyLe-DSAI/AIO-MLOPS-Apollo -q "\(.owner.id) \(.id)"
+github_repository_ids = { owner = 199584249, repository = 1425803580 }
