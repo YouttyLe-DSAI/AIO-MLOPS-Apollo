@@ -1,4 +1,5 @@
-# Checks on every PR: Terraform formatting/validation (no AWS access needed) and shell/Python syntax.
+# Checks on every PR: Terraform formatting/validation (no AWS access needed), shell/Python syntax,
+# Model Portal unit tests.
 name: ci
 
 on:
@@ -28,5 +29,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: for f in infra/scripts/*.sh infra/release/*.sh; do bash -n "$f" && echo "ok $f"; done
-      - run: python3 -m py_compile infra/release/*.py && echo ok
+      - run: for f in infra/scripts/*.sh infra/release/*.sh infra/benchmark/*.sh; do bash -n "$f" && echo "ok $f"; done
+      - run: python3 -m py_compile infra/release/*.py infra/benchmark/*.py scripts/*.py && echo ok
+
+  portal:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -q -r portal/requirements.txt pytest
+      - run: cd portal && python -m pytest -q tests

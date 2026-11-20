@@ -1,0 +1,102 @@
+# Benchmark one MLflow Model version on the EKS L4 (architecture: Triton Perf Analyzer -> MLflow).
+#   1. release it if needed (idempotent: no build when the image tag is already in ECR)
+#   2. pin that tag and replicas: 1 in the GitOps repo; Argo CD deploys Triton (L4 node scales up)
+#   3. infra/benchmark/run_benchmark.sh: Smoke test (full CIFAR-10 test set vs offline top-1) and the
+#      Benchmark matrix with Perf Analyzer; results -> MLflow experiment "benchmark" + registry tags
+#   4. replicas: 0 again unless keep_serving, so Cluster Autoscaler removes the L4 node
+# Triggered from GitHub (Actions -> benchmark -> Run workflow) or from the Model Portal.
+name: benchmark
+run-name: benchmark ${{ inputs.model_name }} v${{ inputs.model_version }} (${{ inputs.requested_by || github.actor }})
+
+on:
+  workflow_dispatch:
+    inputs:
+      model_name:
+        description: Registered model in MLflow
+        required: true
+        default: resnet18-cifar10
+      model_version:
+        description: Version number in the MLflow registry (e.g. 1)
+        required: true
+      keep_serving:
+        description: Keep Triton running afterwards (holds the L4, ~$0.99/h)
+        type: boolean
+        default: false
+      requested_by:
+        description: Who asked (set by the Model Portal)
+        required: false
+        default: ""
+
+permissions:
+  id-token: write   # OIDC token for AWS
+  contents: read
+
+concurrency:
+  group: release-dev   # same group as release: both rewrite envs/dev/triton/values.yaml
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-northeast-2
+  CLUSTER_NAME: apollo-mlops
+  MODEL_NAME: ${{ inputs.model_name }}
+  MODEL_VERSION: ${{ inputs.model_version }}
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Validate inputs
+        run: |
+          [[ "$MODEL_NAME" =~ ^[A-Za-z0-9._-]{1,100}$ ]] || { echo "::error::bad model_name"; exit 1; }
+          [[ "$MODEL_VERSION" =~ ^[0-9]{1,6}$ ]] || { echo "::error::model_version must be a number"; exit 1; }
+
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_RELEASE_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: kubeconfig
+        run: aws eks update-kubeconfig --name "$CLUSTER_NAME" --region "$AWS_REGION"
+
+      - name: Release the Model version (skipped when the image is already in ECR)
+        id: release
+        run: infra/release/run_release.sh "$MODEL_NAME" "$MODEL_VERSION"
+
+      - name: Check out the GitOps repo
+        uses: actions/checkout@v4
+        with:
+          repository: YouttyLe-DSAI/AIO-MLOPS-Apollo-gitops
+          ssh-key: ${{ secrets.GITOPS_DEPLOY_KEY }}
+          path: gitops
+
+      - name: Serve it (tag + replicas 1 in GitOps)
+        id: serve
+        env:
+          TAG: ${{ steps.release.outputs.image_tag }}
+        run: |
+          cd gitops
+          FILE=envs/dev/triton/values.yaml
+          sed -i -E "s|^(  tag: ).*(# release-tag)$|\1\"${TAG}\"  \2|; s|^replicas: [0-9]+$|replicas: 1|" "$FILE"
+          git config user.name  "apollo-release[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet; then echo "Triton already serves ${TAG}"; exit 0; fi
+          git commit -qam "benchmark: serve ${TAG} (run ${GITHUB_RUN_ID})"
+          git push -q
+
+      - name: Benchmark (Smoke test + Perf Analyzer matrix -> MLflow)
+        env:
+          TRITON_IMAGE: ${{ steps.release.outputs.image }}
+        run: infra/benchmark/run_benchmark.sh "$MODEL_NAME" "$MODEL_VERSION"
+
+      - name: Free the GPU (replicas 0)
+        if: always() && steps.serve.conclusion == 'success' && !inputs.keep_serving
+        run: |
+          cd gitops
+          git pull -q --rebase
+          sed -i -E "s|^replicas: [0-9]+$|replicas: 0|" envs/dev/triton/values.yaml
+          if git diff --quiet; then exit 0; fi
+          git commit -qam "benchmark: replicas 0 after run ${GITHUB_RUN_ID}"
+          git push -q

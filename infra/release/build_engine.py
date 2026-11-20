@@ -68,6 +68,9 @@ def config_pbtxt(meta: dict) -> str:
         "output [\n" + tensor_block(meta["output"]) + "]\n"
         "instance_group [\n  {\n    count: 1\n    kind: KIND_GPU\n  }\n]\n"
         "dynamic_batching { }\n"
+        # Exposed by GET /v2/models/<model>/config: the benchmark Job checks it measures the right version.
+        f'parameters {{ key: "model_version_id" value: {{ string_value: "{meta["model_version_id"]}" }} }}\n'
+        f'parameters {{ key: "target_precision" value: {{ string_value: "{meta["target_precision"]}" }} }}\n'
     )
 
 

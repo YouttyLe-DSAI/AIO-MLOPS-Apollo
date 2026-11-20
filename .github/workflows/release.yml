@@ -5,6 +5,7 @@
 #   3. pin that tag in the GitOps repo (envs/dev/triton/values.yaml); Argo CD deploys Triton and runs
 #      the smoke test
 name: release
+run-name: release ${{ inputs.model_name }} v${{ inputs.model_version }} (${{ inputs.requested_by || github.actor }})
 
 on:
   workflow_dispatch:
@@ -16,6 +17,10 @@ on:
       model_version:
         description: Version number in the MLflow registry (e.g. 1)
         required: true
+      requested_by:
+        description: Who asked (set by the Model Portal)
+        required: false
+        default: ""
 
 permissions:
   id-token: write   # OIDC token for AWS
@@ -28,12 +33,19 @@ concurrency:
 env:
   AWS_REGION: ap-northeast-2
   CLUSTER_NAME: apollo-mlops
+  MODEL_NAME: ${{ inputs.model_name }}
+  MODEL_VERSION: ${{ inputs.model_version }}
 
 jobs:
   release:
     runs-on: ubuntu-latest
     timeout-minutes: 100
     steps:
+      - name: Validate inputs
+        run: |
+          [[ "$MODEL_NAME" =~ ^[A-Za-z0-9._-]{1,100}$ ]] || { echo "::error::bad model_name"; exit 1; }
+          [[ "$MODEL_VERSION" =~ ^[0-9]{1,6}$ ]] || { echo "::error::model_version must be a number"; exit 1; }
+
       - uses: actions/checkout@v4
 
       - uses: aws-actions/configure-aws-credentials@v4
@@ -46,7 +58,7 @@ jobs:
 
       - name: Build TensorRT Engine + Serving image on the L4
         id: build
-        run: infra/release/run_release.sh "${{ inputs.model_name }}" "${{ inputs.model_version }}"
+        run: infra/release/run_release.sh "$MODEL_NAME" "$MODEL_VERSION"
 
       - name: Check out the GitOps repo
         uses: actions/checkout@v4

@@ -1,0 +1,74 @@
+# Model Portal CD: test, build the image, push to ECR model-portal:<sha>, pin the tag in GitOps.
+# Argo CD (app `portal`) rolls it out at https://portal.3-39-32-158.sslip.io.
+name: portal
+
+on:
+  push:
+    branches: [main]
+    paths: [portal/**, .github/workflows/portal.yml]
+  workflow_dispatch:
+
+permissions:
+  id-token: write   # OIDC token for AWS (role allows push to ECR model-portal only)
+  contents: read
+
+concurrency:
+  group: portal-dev
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ap-northeast-2
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Unit tests
+        run: |
+          pip install -q -r portal/requirements.txt pytest
+          cd portal && python -m pytest -q tests
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_RELEASE_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push
+        id: image
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+        run: |
+          TAG="${GITHUB_SHA::12}"
+          docker build -t "$REGISTRY/model-portal:$TAG" portal
+          docker push "$REGISTRY/model-portal:$TAG"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Check out the GitOps repo
+        uses: actions/checkout@v4
+        with:
+          repository: YouttyLe-DSAI/AIO-MLOPS-Apollo-gitops
+          ssh-key: ${{ secrets.GITOPS_DEPLOY_KEY }}
+          path: gitops
+
+      - name: Pin the portal image tag
+        env:
+          TAG: ${{ steps.image.outputs.tag }}
+        run: |
+          cd gitops
+          sed -i -E "s|^(    newTag: ).*(# portal-tag)$|\1\"${TAG}\"  \2|" envs/dev/portal/kustomization.yaml
+          git config user.name  "apollo-release[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet; then exit 0; fi
+          git commit -qam "portal: ${TAG}"
+          git push -q
+          echo "### Model Portal \`${TAG}\` → https://portal.3-39-32-158.sslip.io" >> "$GITHUB_STEP_SUMMARY"
