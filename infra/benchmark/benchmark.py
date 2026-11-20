@@ -171,13 +171,18 @@ def load_cifar10_test(cache: Path) -> tuple[np.ndarray, np.ndarray]:
     if not target.exists():
         cache.mkdir(parents=True, exist_ok=True)
         archive = cache / "cifar-10-binary.tar.gz"
-        with urllib.request.urlopen(CIFAR10_URL, timeout=120) as r, open(archive, "wb") as f:
+        log("downloading CIFAR-10 (once; cached on the benchmark-cache volume)")
+        part = archive.with_suffix(".part")
+        with urllib.request.urlopen(CIFAR10_URL, timeout=120) as r, open(part, "wb") as f:
             shutil.copyfileobj(r, f)
+        part.replace(archive)
         if hashlib.md5(archive.read_bytes()).hexdigest() != CIFAR10_MD5:
             raise SystemExit("CIFAR-10 download corrupt (md5 mismatch)")
         with tarfile.open(archive, "r:gz") as tar:
             src = tar.extractfile("cifar-10-batches-bin/test_batch.bin")
-            target.write_bytes(src.read())
+            target.with_suffix(".part").write_bytes(src.read())
+            target.with_suffix(".part").replace(target)
+        archive.unlink()  # keep only the 30 MB test batch
     raw = np.fromfile(target, dtype=np.uint8).reshape(-1, 1 + 3072)
     images = raw[:, 1:].reshape(-1, 3, 32, 32).transpose(0, 2, 3, 1)
     return np.ascontiguousarray(images), raw[:, 0].astype(np.int64)
@@ -429,7 +434,7 @@ def main() -> int:
         metadata["triton"].update(version=info["server_metadata"].get("version"), server_metadata=info["server_metadata"],
                                   served_model_version_id=info["served_model_version_id"])
         metadata["hardware"]["gpu"] = gpu_info()
-        images, labels = load_cifar10_test(WORK / "cifar10")
+        images, labels = load_cifar10_test(Path(os.environ.get("DATASET_CACHE", "/cache/cifar10")))
 
         smoke = smoke_test(mv, images, labels)
         (run_dir / "smoke_test.json").write_text(json.dumps(smoke, indent=2) + "\n")

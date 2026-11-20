@@ -77,6 +77,7 @@ destroy() {
   say "2/5 volumes: delete leftover PVCs (StatefulSet volumes survive app deletion) and wait for the EBS volumes"
   kubectl delete pvc --all -n mlflow --wait=false 2>/dev/null || true
   kubectl delete pvc --all -n monitoring --wait=false 2>/dev/null || true
+  kubectl delete pvc --all -n release --wait=false 2>/dev/null || true
   wait_until_empty "PersistentVolumes" kubectl get pv -o name
   wait_until_empty "LoadBalancer Services other than Traefik" \
     sh -c "kubectl get svc -A --field-selector spec.type=LoadBalancer -o name | grep -v traefik"

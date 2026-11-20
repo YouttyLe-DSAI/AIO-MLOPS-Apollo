@@ -31,6 +31,9 @@ spec:
         - name: scripts
           configMap:
             name: benchmark-scripts
+        - name: cache          # CIFAR-10 test batch, downloaded once (Terraform: platform/release.tf)
+          persistentVolumeClaim:
+            claimName: benchmark-cache
       containers:
         - name: benchmark
           image: nvcr.io/nvidia/tritonserver:26.09-py3-sdk   # perf_analyzer + tritonclient 26.09 (= Triton 2.73.0)
@@ -60,3 +63,4 @@ spec:
           volumeMounts:
             - { name: work, mountPath: /work }
             - { name: scripts, mountPath: /scripts }
+            - { name: cache, mountPath: /cache }
