@@ -70,5 +70,6 @@ resource "helm_release" "argocd_apps" {
     kubernetes_secret_v1.mlflow_db,
     kubernetes_secret_v1.mlflow_admin,
     helm_release.cert_manager, # ClusterIssuer CRDs for envs/dev/cluster-config
+    kubernetes_secret_v1.grafana_admin,
   ]
 }

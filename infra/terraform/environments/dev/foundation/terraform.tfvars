@@ -12,7 +12,7 @@ system_instance_types = ["m5.large", "m5a.large", "m6i.large", "m7i.large"] # of
 system_node_count     = { min = 2, desired = 2, max = 3 }
 
 gpu_instance_type = "g6.xlarge"
-gpu_node_max      = 1
+gpu_node_max      = 2 # a release Job can build while Triton holds the first L4
 gpu_disk_gb       = 200
 
 ecr_repositories     = ["resnet18-triton"]
@@ -29,3 +29,6 @@ addon_versions = {
   metrics-server         = "v0.9.0-eksbuild.14"
   aws-ebs-csi-driver     = "v1.67.2-eksbuild.1"
 }
+
+# Release Job (GitHub Actions -> Kubernetes Job on the L4): ECR push + MLflow artifact read
+gpu_runner_service_account = { namespace = "release", name = "release-builder" }

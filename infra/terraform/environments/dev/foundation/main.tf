@@ -26,6 +26,15 @@ module "eks" {
   subnet_ids                   = module.vpc.public_subnet_ids
   endpoint_public_access_cidrs = var.cluster_endpoint_public_cidrs
   admin_principal_arns         = var.cluster_admin_principal_arns
+
+  # GitHub Actions release workflow: create/watch Jobs in the release namespace only.
+  namespaced_access = {
+    github-release = {
+      principal_arn = module.github_release_role.role_arn
+      policy        = "AmazonEKSEditPolicy"
+      namespaces    = [var.release_namespace]
+    }
+  }
 }
 
 # Needed before any node can become Ready.

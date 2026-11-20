@@ -42,3 +42,8 @@ output "ingress_base_domain" {
   description = "Base domain for platform UIs, e.g. mlflow.<this>, argocd.<this>"
   value       = local.ingress_base_domain
 }
+
+output "github_release_role_arn" {
+  description = "Set as the AWS_RELEASE_ROLE_ARN variable of the GitHub repository."
+  value       = module.github_release_role.role_arn
+}

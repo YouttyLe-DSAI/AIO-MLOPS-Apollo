@@ -65,3 +65,8 @@ variable "cluster_autoscaler_image_tag" {
   type        = string
   default     = "v1.36.2"
 }
+
+variable "release_namespace" {
+  type    = string
+  default = "release"
+}

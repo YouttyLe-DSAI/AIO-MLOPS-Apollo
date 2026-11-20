@@ -102,7 +102,7 @@ variable "mlflow_service_account" {
 }
 
 variable "gpu_runner_service_account" {
-  description = "Namespace/service account of the ARC GPU runner that builds TensorRT engines and pushes images to ECR."
+  description = "Namespace/service account of the release Job that builds the TensorRT Engine + Serving image and pushes it to ECR."
   type        = object({ namespace = string, name = string })
   default = {
     namespace = "arc-runners"
@@ -143,4 +143,16 @@ variable "budget_alert_emails" {
 variable "addon_versions" {
   description = "Pinned EKS add-on versions. Bump deliberately (aws eks describe-addon-versions) and review the plan."
   type        = map(string)
+}
+
+variable "github_repository" {
+  description = "Repository whose GitHub Actions (on main) may run releases, as owner/name."
+  type        = string
+  default     = "YouttyLe-DSAI/AIO-MLOPS-Apollo"
+}
+
+variable "release_namespace" {
+  description = "Kubernetes namespace where release Jobs run; the GitHub Actions role may only edit this namespace."
+  type        = string
+  default     = "release"
 }

@@ -130,3 +130,33 @@ module "pod_identity_cluster_autoscaler" {
   service_account = "cluster-autoscaler"
   inline_policies = { ClusterAutoscaler = data.aws_iam_policy_document.cluster_autoscaler.json }
 }
+
+# ---------------------------------------------------------------- GitHub Actions (release workflow)
+
+locals {
+  cluster_arn = "arn:${local.partition}:eks:${var.region}:${local.account_id}:cluster/${var.cluster_name}"
+}
+
+data "aws_iam_policy_document" "github_release" {
+  statement {
+    sid       = "Kubeconfig"
+    actions   = ["eks:DescribeCluster"]
+    resources = [local.cluster_arn]
+  }
+  statement {
+    sid       = "SkipAlreadyReleasedVersions"
+    actions   = ["ecr:DescribeImages"]
+    resources = [for r in module.ecr : r.arn]
+  }
+}
+
+# Assumed by .github/workflows/release.yml on main through OIDC: no AWS keys stored in GitHub.
+# Inside the cluster it may only edit the release namespace (see namespaced_access in main.tf).
+module "github_release_role" {
+  source = "../../../modules/github-actions-role"
+
+  name            = "${var.cluster_name}-github-release"
+  repository      = var.github_repository
+  allowed_refs    = ["refs/heads/main"]
+  inline_policies = { Release = data.aws_iam_policy_document.github_release.json }
+}
