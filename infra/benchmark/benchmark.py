@@ -35,6 +35,7 @@ import statistics
 import subprocess
 import sys
 import tarfile
+import threading
 import time
 import traceback
 import urllib.error
@@ -241,31 +242,86 @@ def parse_perf_csv(text: str, batch_size: int) -> dict:
             "p95_latency_ms": float(r["p95 latency"]) / 1000, "p99_latency_ms": float(r["p99 latency"]) / 1000}
 
 
+CGROUP_MEMORY = Path("/sys/fs/cgroup/memory.current")  # cgroup v2 (EKS AL2023 nodes)
+
+
+class MemoryPeak:
+    """Peak memory of this container while one Perf Analyzer run is in flight.
+
+    Perf Analyzer keeps one record per request in memory for the whole run, so the high-rate points
+    (concurrency 32, batch 1: ~10k requests/s) need the most; the Job's memory limit must cover them.
+    """
+
+    def __init__(self, interval_s: float = 0.5):
+        self.interval_s, self.peak, self._stop = interval_s, 0, threading.Event()
+        self._thread = threading.Thread(target=self._sample, daemon=True)
+
+    @staticmethod
+    def _read() -> int:
+        try:
+            return int(CGROUP_MEMORY.read_text())
+        except (OSError, ValueError):
+            return 0
+
+    def _sample(self) -> None:
+        while not self._stop.is_set():
+            self.peak = max(self.peak, self._read())
+            self._stop.wait(self.interval_s)
+
+    def __enter__(self) -> MemoryPeak:
+        self._thread.start()
+        return self
+
+    def __exit__(self, *exc) -> None:
+        self._stop.set()
+        self._thread.join()
+        self.peak = max(self.peak, self._read())
+
+    @property
+    def mib(self) -> int | None:
+        return round(self.peak / 1048576) if self.peak else None
+
+
 def run_matrix(run_dir: Path, payload: Path, metadata: dict) -> list[dict]:
+    """Every point x (warm-ups + repeats). A Perf Analyzer failure is retried once; if it fails again
+    the point is recorded in metadata["failed_points"] and skipped, so the other points still count."""
     bc, rows = CFG["benchmark"], []
+    metadata.setdefault("failed_points", [])
     for c, b in points():
         plan = [("warmup", w) for w in range(1, int(bc["warmup_runs"]) + 1)] + \
                [("measure", r) for r in range(1, int(bc["repeats"]) + 1)]
+        point_rows: list[dict] = []
         for kind, idx in plan:
             out_dir = run_dir / "raw" / ("warmup" if kind == "warmup" else "")
             out_dir.mkdir(parents=True, exist_ok=True)
             stem = f"c{c}_b{b}_{'w' if kind == 'warmup' else 'r'}{idx}"
             csv_path, stdout_path = out_dir / f"{stem}.csv", out_dir / f"{stem}.stdout.txt"
-            before, started = triton_counters(), utc_now()
-            with open(stdout_path, "w") as out:
-                rc = subprocess.run(perf_command(c, b, csv_path, payload), stdout=out, stderr=subprocess.STDOUT).returncode
-            ended, after = utc_now(), triton_counters()
-            if rc != 0 or not csv_path.exists():
-                raise RuntimeError(f"perf_analyzer failed (exit {rc}) at {stem}; see raw/{stdout_path.relative_to(run_dir / 'raw')}")
+            for attempt in (1, 2):
+                csv_path.unlink(missing_ok=True)
+                before, started = triton_counters(), utc_now()
+                with open(stdout_path, "w") as out, MemoryPeak() as mem:
+                    rc = subprocess.run(perf_command(c, b, csv_path, payload), stdout=out, stderr=subprocess.STDOUT).returncode
+                ended, after = utc_now(), triton_counters()
+                if rc == 0 and csv_path.exists():
+                    break
+                log(f"{stem}: perf_analyzer failed (exit {rc}, attempt {attempt}/2, client memory peak {mem.mib} MiB); "
+                    f"see raw/{stdout_path.relative_to(run_dir / 'raw')}")
+            else:
+                metadata["failed_points"].append({"concurrency": c, "batch_size": b, "pass": stem, "exit_code": rc,
+                                                  "client_mem_peak_mib": mem.mib})
+                point_rows = []  # an incomplete point is left out of benchmark.csv / summary.csv
+                break
             entry = {"kind": kind, "concurrency": c, "batch_size": b, "index": idx,
                      "repeat": idx if kind == "measure" else None, "started_at": started, "ended_at": ended,
-                     "raw_csv": str(csv_path.relative_to(run_dir)), "raw_stdout": str(stdout_path.relative_to(run_dir))}
+                     "raw_csv": str(csv_path.relative_to(run_dir)), "raw_stdout": str(stdout_path.relative_to(run_dir)),
+                     "client_mem_peak_mib": mem.mib}
             deltas = triton_deltas(before, after)
             metadata["passes"].append({**entry, "runtime_metrics": deltas})
             parsed = parse_perf_csv(csv_path.read_text(), b)
-            log(f"{stem}: {parsed['images_per_s']:9.1f} img/s  p95 {parsed['p95_latency_ms']:7.2f} ms")
+            log(f"{stem}: {parsed['images_per_s']:9.1f} img/s  p95 {parsed['p95_latency_ms']:7.2f} ms  client mem {mem.mib} MiB")
             if kind == "measure":
-                rows.append({**parsed, "repeat": idx, "started_at": started, "ended_at": ended, **deltas})
+                point_rows.append({**parsed, "repeat": idx, "started_at": started, "ended_at": ended, **deltas})
+        rows += point_rows
     return rows
 
 
@@ -450,6 +506,8 @@ def main() -> int:
         metadata["benchmark_started_at"] = utc_now()
         rows = run_matrix(run_dir, payload, metadata)
         metadata["benchmark_ended_at"] = utc_now()
+        if not rows:
+            raise RuntimeError("no Benchmark point succeeded")
         add_gpu_metrics(rows, metadata)
 
         identity = {k: mv[k] for k in ("model_version_id", "variant", "target_precision")}
@@ -462,7 +520,12 @@ def main() -> int:
             w = csv.DictWriter(f, fieldnames=list(summary[0]))
             w.writeheader()
             w.writerows(summary)
-        metadata["status"], rc = "completed", 0
+        if metadata["failed_points"]:
+            failed = ", ".join(f"c{p['concurrency']}_b{p['batch_size']}" for p in metadata["failed_points"])
+            log(f"PARTIAL: {len(metadata['failed_points'])} point(s) failed and are left out: {failed}")
+            metadata["status"], rc = "partial", 1
+        else:
+            metadata["status"], rc = "completed", 0
     except BaseException as e:  # noqa: BLE001 - record any failure in metadata.json and MLflow
         if metadata["status"] == "running":
             metadata["status"] = "failed"

@@ -91,6 +91,10 @@ module "node_group_gpu" {
   labels = {
     role                     = "gpu"
     "nvidia.com/gpu.present" = "true" # matched by the NVIDIA device plugin's node affinity
+    # Cluster Autoscaler's AWS GPU label: a node carrying it counts as "still starting" until the device
+    # plugin advertises nvidia.com/gpu, instead of "cannot fit the pod", so a pending GPU pod does not
+    # make the autoscaler launch a second L4 (seen on 2026-11-20: two nodes for one pod).
+    "k8s.amazonaws.com/accelerator" = "nvidia-l4"
   }
   taints = [{ key = "nvidia.com/gpu", value = "true", effect = "NO_SCHEDULE" }]
   tags   = local.tags
@@ -98,7 +102,7 @@ module "node_group_gpu" {
   # Cluster Autoscaler starts this group from 0 when a pod asks for nvidia.com/gpu (and stops it when idle);
   # these hints describe a node of the group while none is running.
   autoscaler_node_template = {
-    labels    = { role = "gpu", "nvidia.com/gpu.present" = "true" }
+    labels    = { role = "gpu", "nvidia.com/gpu.present" = "true", "k8s.amazonaws.com/accelerator" = "nvidia-l4" }
     taints    = { "nvidia.com/gpu" = "true:NoSchedule" }
     resources = { "nvidia.com/gpu" = "1" }
   }

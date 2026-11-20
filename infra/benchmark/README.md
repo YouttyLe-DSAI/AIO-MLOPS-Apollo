@@ -25,7 +25,11 @@ Load generator chạy trên node system, không chạy trên node L4. Nhờ vậ
 - **GitHub → Actions → benchmark → Run workflow** (hoặc nút *Benchmark* trên Model Portal). Workflow tự release nếu cần, bật Triton với version đó, benchmark, rồi tắt GPU.
 - Chạy tay khi Triton đã serve đúng version: `infra/benchmark/run_benchmark.sh resnet18-cifar10 <version>`.
 
-Một lần chạy đủ ma trận mất khoảng 20–25 phút, chưa tính thời gian bật GPU.
+Một lần chạy đủ ma trận mất khoảng 20–25 phút, chưa tính thời gian bật GPU. Lần đầu phải tải CIFAR-10 (khoảng 160 MB, server Toronto chậm, có thể mất gần 30 phút). Sau đó file test được cache trên PVC `release/benchmark-cache`.
+
+**Khi có điểm lỗi.** Mỗi lệnh `perf_analyzer` lỗi sẽ được chạy lại một lần. Vẫn lỗi thì điểm đó bị bỏ qua, các điểm còn lại vẫn được ghi. Run có trạng thái `partial`, danh sách điểm lỗi nằm trong `metadata.json:failed_points`, và workflow báo đỏ để mọi người biết.
+
+**Bộ nhớ.** Perf Analyzer giữ một bản ghi cho mỗi request trong suốt lần đo. Điểm concurrency 32 × batch 1 (khoảng 10k request/s) tốn RAM nhất: ngày 20/11 nó vượt giới hạn 4 GiB và bị OOMKilled. Job hiện xin 3 GiB, giới hạn 6 GiB. Log in bộ nhớ đỉnh của client sau mỗi lần đo (`client mem … MiB`); giá trị này cũng nằm trong `metadata.json:passes[].client_mem_peak_mib`.
 
 Tải kết quả về để tổng hợp:
 
