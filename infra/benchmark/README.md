@@ -11,13 +11,13 @@
    - Cả thư mục được ghi vào MLflow, experiment **`benchmark`**.
    - Model version trong registry được gắn tag `benchmark.*`, Model Portal đọc các tag này.
 
-Load generator chạy trên node system, không chạy trên node L4. Nhờ vậy Perf Analyzer không tranh CPU với Triton. Request đi qua Service nội bộ cluster.
+Load generator chạy trên node riêng (node group `loadgen`, 8 vCPU / 16 GiB, on-demand). Cluster Autoscaler bật node này khi có Benchmark Job và tắt sau 10 phút rảnh. Perf Analyzer vì vậy không tranh CPU với Triton trên node L4, và không lấy RAM của MLflow, Postgres, Argo CD trên node system. Request đi qua Service nội bộ cluster.
 
 | File | Vai trò |
 | --- | --- |
 | `benchmark.yaml` | Ma trận và ngưỡng, sao từ `configs/serving.gpu.yaml` của repo serving. Đổi ở bên đó trước |
 | `benchmark.py` | Chạy trong `tritonserver:26.09-py3-sdk` (perf_analyzer 26.09 = Triton 2.73.0) |
-| `benchmark-job.yaml` | Job trong namespace `release`, chạy trên node system |
+| `benchmark-job.yaml` | Job trong namespace `release`, chạy trên node `loadgen` |
 | `run_benchmark.sh` | Tạo Job, stream log, ghi bảng kết quả vào summary của GitHub Actions |
 
 ## Chạy
@@ -25,11 +25,20 @@ Load generator chạy trên node system, không chạy trên node L4. Nhờ vậ
 - **GitHub → Actions → benchmark → Run workflow** (hoặc nút *Benchmark* trên Model Portal). Workflow tự release nếu cần, bật Triton với version đó, benchmark, rồi tắt GPU.
 - Chạy tay khi Triton đã serve đúng version: `infra/benchmark/run_benchmark.sh resnet18-cifar10 <version>`.
 
-Một lần chạy đủ ma trận mất khoảng 20–25 phút, chưa tính thời gian bật GPU. Lần đầu phải tải CIFAR-10 (khoảng 160 MB, server Toronto chậm, có thể mất gần 30 phút). Sau đó file test được cache trên PVC `release/benchmark-cache`.
+Một lần chạy đủ ma trận mất khoảng 20–25 phút, chưa tính thời gian bật node L4 và node loadgen (chạy song song, khoảng 5 phút gồm cả pull image). Lần đầu phải tải CIFAR-10 (khoảng 160 MB, server Toronto chậm, có thể mất gần 30 phút). Sau đó file test được cache trên PVC `release/benchmark-cache`.
 
 **Khi có điểm lỗi.** Mỗi lệnh `perf_analyzer` lỗi sẽ được chạy lại một lần. Vẫn lỗi thì điểm đó bị bỏ qua, các điểm còn lại vẫn được ghi. Run có trạng thái `partial`, danh sách điểm lỗi nằm trong `metadata.json:failed_points`, và workflow báo đỏ để mọi người biết.
 
-**Bộ nhớ.** Perf Analyzer giữ một bản ghi cho mỗi request trong suốt lần đo. Điểm concurrency 32 × batch 1 (khoảng 10k request/s) tốn RAM nhất: ngày 20/11 nó vượt giới hạn 4 GiB và bị OOMKilled. Job hiện xin 3 GiB, giới hạn 6 GiB. Log in bộ nhớ đỉnh của client sau mỗi lần đo (`client mem … MiB`); giá trị này cũng nằm trong `metadata.json:passes[].client_mem_peak_mib`.
+**Bộ nhớ.** Perf Analyzer giữ một bản ghi cho mỗi request (khoảng 11 KB) trong suốt lần đo, nên RAM tăng theo số request mỗi giây: khoảng 0,5 GiB ở concurrency 1 và 1,5 GiB ở concurrency 16 × batch 1. Điểm concurrency 32 × batch 1 tốn nhất:
+
+- Ngày 20/11, nó vượt giới hạn 4 GiB và bị OOMKilled.
+- Ngày 21/11, khi còn chạy chung node system, nó làm cạn RAM cả node: kubelet ngừng phản hồi, MLflow và Argo CD dừng cho tới khi reboot node.
+
+Cách xử lý hiện tại:
+
+- Job chạy trên node `loadgen` riêng, xin 8 GiB, giới hạn 12 GiB.
+- `benchmark.py` theo dõi `memory.current` của container. Khi còn cách giới hạn 1 GiB, nó dừng lần đo đang chạy và ghi điểm đó vào `failed_points` với `reason: memory_budget`. Container không bị kernel OOM-kill nên các điểm đã đo không mất. Có thể đặt ngưỡng khác bằng `CLIENT_MEMORY_BUDGET_MIB`.
+- Log in bộ nhớ đỉnh của client sau mỗi lần đo (`client mem … MiB`). Giá trị này cũng nằm trong `metadata.json:passes[].client_mem_peak_mib`.
 
 Tải kết quả về để tổng hợp:
 
