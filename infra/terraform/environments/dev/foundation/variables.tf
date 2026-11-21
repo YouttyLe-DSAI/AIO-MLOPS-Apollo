@@ -65,6 +65,12 @@ variable "system_node_count" {
   }
 }
 
+variable "loadgen_instance_types" {
+  description = "Benchmark load generator node (Perf Analyzer only), 8 vCPU / 16 GiB, on-demand, 0-1 node."
+  type        = list(string)
+  default     = ["c6i.2xlarge", "c7i.2xlarge", "c5.2xlarge"]
+}
+
 variable "gpu_instance_type" {
   type    = string
   default = "g6.xlarge" # 1x NVIDIA L4 24 GB, 4 vCPU, 16 GiB

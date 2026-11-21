@@ -110,6 +110,36 @@ module "node_group_gpu" {
   depends_on = [module.addons_core]
 }
 
+# Benchmark load generator (Perf Analyzer) only. It used to share the 8 GiB system nodes with MLflow,
+# Postgres and Argo CD: at concurrency 32 x batch 1 its memory took a whole system node down on
+# 2026-11-21. Started from 0 by Cluster Autoscaler when a Benchmark Job is pending, removed when idle.
+# Same AZ as the system nodes, because the Job mounts the EBS-backed CIFAR-10 cache (PVC benchmark-cache).
+# On-demand for the same reason as the L4: a spot interruption would void a 25-minute measurement.
+module "node_group_loadgen" {
+  source = "../../../modules/eks-node-group"
+
+  cluster_name   = module.eks.name
+  name           = "loadgen"
+  subnet_ids     = [module.vpc.public_subnet_ids_by_az[var.system_node_az]]
+  ami_type       = "AL2023_x86_64_STANDARD"
+  capacity_type  = "ON_DEMAND"
+  instance_types = var.loadgen_instance_types
+  min_size       = 0
+  desired_size   = 0
+  max_size       = 1
+  disk_size_gb   = 50 # tritonserver:26.09-py3-sdk is 8.4 GB
+  labels         = { role = "loadgen" }
+  taints         = [{ key = "apollo/loadgen", value = "true", effect = "NO_SCHEDULE" }]
+  tags           = local.tags
+
+  autoscaler_node_template = {
+    labels = { role = "loadgen" }
+    taints = { "apollo/loadgen" = "true:NoSchedule" }
+  }
+
+  depends_on = [module.addons_core]
+}
+
 # Need schedulable nodes; their pods would otherwise leave the add-on DEGRADED.
 module "addons" {
   source = "../../../modules/eks-addons"

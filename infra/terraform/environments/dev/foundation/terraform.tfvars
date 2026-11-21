@@ -11,6 +11,8 @@ system_node_az        = "ap-northeast-2a"
 system_instance_types = ["m5.large", "m5a.large", "m6i.large", "m7i.large"] # offered in ap-northeast-2a
 system_node_count     = { min = 2, desired = 2, max = 3 }
 
+loadgen_instance_types = ["c6i.2xlarge", "c7i.2xlarge", "c5.2xlarge"] # Benchmark only; offered in ap-northeast-2a
+
 gpu_instance_type = "g6.xlarge"
 gpu_node_max      = 2 # a release Job can build while Triton holds the first L4
 gpu_disk_gb       = 200

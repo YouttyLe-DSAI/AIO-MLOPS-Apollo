@@ -1,6 +1,8 @@
 # One benchmark = one Job (rendered by run_benchmark.sh; ${...} are substituted there).
-# Load generator on a system node (not the L4 node), so Perf Analyzer never competes with Triton
-# for the g6.xlarge's 4 vCPUs; it reaches Triton through the in-cluster Service.
+# Load generator on its own node (node group loadgen, 8 vCPU / 16 GiB, started from 0 by Cluster
+# Autoscaler): not the L4 node, so Perf Analyzer never competes with Triton for the g6.xlarge's
+# 4 vCPUs, and not a system node, so its memory can never starve MLflow / Postgres / Argo CD.
+# It reaches Triton through the in-cluster Service.
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -23,7 +25,9 @@ spec:
     spec:
       restartPolicy: Never
       nodeSelector:
-        role: system
+        role: loadgen
+      tolerations:
+        - { key: apollo/loadgen, operator: Equal, value: "true", effect: NoSchedule }
       volumes:
         - name: work
           emptyDir:
@@ -57,12 +61,14 @@ spec:
               valueFrom: { secretKeyRef: { name: mlflow-release-bot, key: password } }
             - name: NODE_NAME
               valueFrom: { fieldRef: { fieldPath: spec.nodeName } }
-          # Perf Analyzer keeps one record per request for a whole run: concurrency 32 x batch 1
-          # (~10k requests/s, up to max_trials windows) went past 4Gi and was OOMKilled on
-          # 2026-11-20. The log prints the client memory peak of every pass ("client mem").
+          # Perf Analyzer keeps one record per request (~11 KB) for a whole run, so memory follows the
+          # request rate: ~1.5 GiB at concurrency 16 x batch 1, and concurrency 32 x batch 1 went past
+          # 4Gi (OOMKilled, 2026-11-20) and then took a shared system node down (2026-11-21).
+          # benchmark.py stops a Perf Analyzer run 1 GiB below the limit and records the point as failed,
+          # so the container itself is never OOM-killed. The log prints every pass's peak ("client mem").
           resources:
-            requests: { cpu: "1", memory: 3Gi }
-            limits: { memory: 6Gi }
+            requests: { cpu: "6", memory: 8Gi }
+            limits: { memory: 12Gi }
           volumeMounts:
             - { name: work, mountPath: /work }
             - { name: scripts, mountPath: /scripts }

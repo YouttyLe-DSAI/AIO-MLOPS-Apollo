@@ -1,7 +1,8 @@
 """In-cluster Benchmark Job: Smoke test + Benchmark matrix against the Triton Argo CD deployed.
 
-Runs in nvcr.io/nvidia/tritonserver:26.09-py3-sdk (perf_analyzer 26.09 + tritonclient) on a system
-node, so the load generator never shares the L4 node's CPUs with Triton. Follows the protocol of
+Runs in nvcr.io/nvidia/tritonserver:26.09-py3-sdk (perf_analyzer 26.09 + tritonclient) on the loadgen
+node, so the load generator never shares the L4 node's CPUs with Triton, nor a system node's memory
+with MLflow / Argo CD. Follows the protocol of
 aio-mlops-serving (`serving run`) and writes the same results layout, so `serving report` there can
 aggregate EKS runs together with workstation runs:
 
@@ -19,7 +20,7 @@ The whole folder is logged to MLflow (experiment `benchmark`, artifacts results/
 registered Model version gets benchmark.* tags (read by the Model Portal).
 
 Env: MODEL_NAME + MODEL_VERSION (MLflow registry), MLFLOW_TRACKING_URI/USERNAME/PASSWORD,
-TRITON_HTTP, TRITON_METRICS, MIMIR_URL, NODE_NAME, TRITON_IMAGE, WAIT_READY_S.
+TRITON_HTTP, TRITON_METRICS, MIMIR_URL, NODE_NAME, TRITON_IMAGE, WAIT_READY_S, CLIENT_MEMORY_BUDGET_MIB (optional).
 """
 
 from __future__ import annotations
@@ -243,17 +244,35 @@ def parse_perf_csv(text: str, batch_size: int) -> dict:
 
 
 CGROUP_MEMORY = Path("/sys/fs/cgroup/memory.current")  # cgroup v2 (EKS AL2023 nodes)
+CGROUP_MEMORY_MAX = Path("/sys/fs/cgroup/memory.max")
+MEMORY_HEADROOM = 1 << 30  # stop Perf Analyzer this far below the container limit
 
 
-class MemoryPeak:
-    """Peak memory of this container while one Perf Analyzer run is in flight.
+def memory_budget() -> int | None:
+    """Bytes this container may use before a Perf Analyzer run is stopped: CLIENT_MEMORY_BUDGET_MIB, else
+    the cgroup limit minus MEMORY_HEADROOM. None when there is no limit (e.g. a local run)."""
+    if os.environ.get("CLIENT_MEMORY_BUDGET_MIB"):
+        return int(os.environ["CLIENT_MEMORY_BUDGET_MIB"]) << 20
+    try:
+        limit = CGROUP_MEMORY_MAX.read_text().strip()
+    except OSError:
+        return None
+    return int(limit) - MEMORY_HEADROOM if limit.isdigit() else None
+
+
+class MemoryGuard:
+    """Peak memory of this container while one Perf Analyzer run is in flight, and a guard against the limit.
 
     Perf Analyzer keeps one record per request in memory for the whole run, so the high-rate points
-    (concurrency 32, batch 1: ~10k requests/s) need the most; the Job's memory limit must cover them.
+    (concurrency 32, batch 1: ~10k requests/s) need the most. If the container crosses `budget`, the run
+    is killed here (`tripped`), so the point is recorded as failed instead of the kernel OOM-killing the
+    whole container (cgroup v2 kills every process in it) and losing the points measured so far.
     """
 
-    def __init__(self, interval_s: float = 0.5):
-        self.interval_s, self.peak, self._stop = interval_s, 0, threading.Event()
+    def __init__(self, budget: int | None = None, interval_s: float = 0.5):
+        self.budget, self.interval_s = budget, interval_s
+        self.peak, self.tripped, self.proc = 0, False, None
+        self._stop = threading.Event()
         self._thread = threading.Thread(target=self._sample, daemon=True)
 
     @staticmethod
@@ -265,10 +284,18 @@ class MemoryPeak:
 
     def _sample(self) -> None:
         while not self._stop.is_set():
-            self.peak = max(self.peak, self._read())
+            now = self._read()
+            self.peak = max(self.peak, now)
+            if self.budget and now > self.budget and self.proc and self.proc.poll() is None:
+                self.tripped = True
+                self.proc.kill()
             self._stop.wait(self.interval_s)
 
-    def __enter__(self) -> MemoryPeak:
+    def run(self, cmd: list[str], out) -> int:
+        self.proc = subprocess.Popen(cmd, stdout=out, stderr=subprocess.STDOUT)
+        return self.proc.wait()
+
+    def __enter__(self) -> MemoryGuard:
         self._thread.start()
         return self
 
@@ -285,8 +312,10 @@ class MemoryPeak:
 def run_matrix(run_dir: Path, payload: Path, metadata: dict) -> list[dict]:
     """Every point x (warm-ups + repeats). A Perf Analyzer failure is retried once; if it fails again
     the point is recorded in metadata["failed_points"] and skipped, so the other points still count."""
-    bc, rows = CFG["benchmark"], []
+    bc, rows, budget = CFG["benchmark"], [], memory_budget()
     metadata.setdefault("failed_points", [])
+    if budget:
+        log(f"client memory budget {budget >> 20} MiB (a Perf Analyzer run above it is stopped)")
     for c, b in points():
         plan = [("warmup", w) for w in range(1, int(bc["warmup_runs"]) + 1)] + \
                [("measure", r) for r in range(1, int(bc["repeats"]) + 1)]
@@ -299,15 +328,19 @@ def run_matrix(run_dir: Path, payload: Path, metadata: dict) -> list[dict]:
             for attempt in (1, 2):
                 csv_path.unlink(missing_ok=True)
                 before, started = triton_counters(), utc_now()
-                with open(stdout_path, "w") as out, MemoryPeak() as mem:
-                    rc = subprocess.run(perf_command(c, b, csv_path, payload), stdout=out, stderr=subprocess.STDOUT).returncode
+                with open(stdout_path, "w") as out, MemoryGuard(budget) as mem:
+                    rc = mem.run(perf_command(c, b, csv_path, payload), out)
                 ended, after = utc_now(), triton_counters()
-                if rc == 0 and csv_path.exists():
+                if rc == 0 and csv_path.exists() and not mem.tripped:
+                    break
+                if mem.tripped:  # the same point would hit the budget again: no retry
+                    log(f"{stem}: perf_analyzer stopped at {mem.mib} MiB client memory (budget {budget >> 20} MiB)")
                     break
                 log(f"{stem}: perf_analyzer failed (exit {rc}, attempt {attempt}/2, client memory peak {mem.mib} MiB); "
                     f"see raw/{stdout_path.relative_to(run_dir / 'raw')}")
-            else:
+            if rc != 0 or mem.tripped or not csv_path.exists():
                 metadata["failed_points"].append({"concurrency": c, "batch_size": b, "pass": stem, "exit_code": rc,
+                                                  "reason": "memory_budget" if mem.tripped else "perf_analyzer_error",
                                                   "client_mem_peak_mib": mem.mib})
                 point_rows = []  # an incomplete point is left out of benchmark.csv / summary.csv
                 break

@@ -29,7 +29,7 @@ flowchart LR
   subgraph EKS["AWS EKS · ap-northeast-2"]
     J["Release Job trên L4<br/>fetch → trtexec → BuildKit"]
     TR["Triton 26.09<br/>(namespace serving)"]
-    BJ["Benchmark Job<br/>Smoke test + Perf Analyzer"]
+    BJ["Benchmark Job (node loadgen)<br/>Smoke test + Perf Analyzer"]
     ARGO["Argo CD"]
     OBS["Alloy → Mimir / Loki → Grafana<br/>+ DCGM (GPU)"]
   end
@@ -96,14 +96,14 @@ sequenceDiagram
   participant GA as GitHub Actions
   participant G as GitOps repo
   participant T as Triton (L4)
-  participant BJ as Benchmark Job (node system)
+  participant BJ as Benchmark Job (node loadgen)
   participant M as MLflow
   participant MI as Mimir
   U->>GA: benchmark(model_name, model_version, keep_serving)
   GA->>GA: release (idempotent: image có rồi thì bỏ qua)
   GA->>G: tag + replicas: 1
   G-->>T: Argo CD deploy, CA bật L4
-  GA->>BJ: tạo Job
+  GA->>BJ: tạo Job (CA bật node loadgen)
   BJ->>T: đợi model ready (kiểm tra model_version_id)
   BJ->>T: Smoke test: 10k ảnh test, |top1 - offline| ≤ 0.5 pp
   loop 12 điểm: concurrency {1..32} × batch {1, 8}
@@ -134,7 +134,7 @@ flowchart LR
   GO["Thay đổi app<br/>(GitOps repo)"] --> ARGO["Argo CD auto-sync<br/>+ self-heal"]
 ```
 
-- `foundation`: VPC, EKS, node group (system spot, L4 0–2 node), IAM, Pod Identity, ECR, S3, OIDC GitHub, budget.
+- `foundation`: VPC, EKS, node group (system spot, L4 0–2 node, loadgen 0–1 node cho Perf Analyzer), IAM, Pod Identity, ECR, S3, OIDC GitHub, budget.
 - `platform`: LB controller, Traefik, cert-manager, Argo CD, Cluster Autoscaler, NVIDIA device plugin, các namespace và Secret.
 - App (MLflow, Triton, monitoring, portal) nằm trong GitOps repo. Argo CD đồng bộ, không ai `kubectl apply` bằng tay.
 
@@ -142,4 +142,5 @@ flowchart LR
 
 - **Grafana** (https://grafana.3-39-32-158.sslip.io): dashboard *Apollo · Triton serving* gồm throughput, latency, queue/compute, GPU util, VRAM, power, tensor core, nhiệt độ. Log pod xem qua Loki.
 - **GPU chỉ bật khi có workload.** Cluster Autoscaler bật L4 khi có pod xin GPU và tắt sau 10 phút rảnh. Benchmark tự đưa Triton về `replicas: 0` khi chạy xong.
+- **Node loadgen** (c6i.2xlarge on-demand, khoảng $0.38/giờ) cũng chỉ chạy trong lúc có Benchmark Job, cộng 10 phút rảnh trước khi CA tắt.
 - **Gỡ hạ tầng sau nghiệm thu:** xem `infra/TEARDOWN.md`.
