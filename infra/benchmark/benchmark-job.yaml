@@ -57,9 +57,12 @@ spec:
               valueFrom: { secretKeyRef: { name: mlflow-release-bot, key: password } }
             - name: NODE_NAME
               valueFrom: { fieldRef: { fieldPath: spec.nodeName } }
+          # Perf Analyzer keeps one record per request for a whole run: concurrency 32 x batch 1
+          # (~10k requests/s, up to max_trials windows) went past 4Gi and was OOMKilled on
+          # 2026-11-20. The log prints the client memory peak of every pass ("client mem").
           resources:
-            requests: { cpu: "1", memory: 2Gi }
-            limits: { memory: 4Gi }
+            requests: { cpu: "1", memory: 3Gi }
+            limits: { memory: 6Gi }
           volumeMounts:
             - { name: work, mountPath: /work }
             - { name: scripts, mountPath: /scripts }
