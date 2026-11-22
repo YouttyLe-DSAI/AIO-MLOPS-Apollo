@@ -2,6 +2,8 @@
 
 Từ model đã train trên máy local đến Triton trên EKS, có benchmark và monitoring. Mỗi bước đều chạy lại được và truy vết được trên MLflow, Git và GitHub Actions.
 
+Đối chiếu với Project Handbook (đã đủ chưa, còn thiếu gì) và cách tự kiểm tra từng phần: [`handoff-checklist.md`](handoff-checklist.md).
+
 ## Tổng quan
 
 ```mermaid
