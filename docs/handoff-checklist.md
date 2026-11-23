@@ -21,10 +21,21 @@ Luồng chi tiết của nền tảng nằm ở [`platform-workflow.md`](platfor
 | Repo GitOps (private) | `YouttyLe-DSAI/AIO-MLOPS-Apollo-gitops` | Hiện chỉ Tuấn có quyền |
 | MLflow | https://mlflow.3-39-32-158.sslip.io | Mỗi người một tài khoản: `hoang`, `manh`, `nam` |
 | Model Portal | https://portal.3-39-32-158.sslip.io | Đăng nhập bằng tài khoản MLflow |
-| Grafana | https://grafana.3-39-32-158.sslip.io | Chỉ có tài khoản admin, nhờ Tuấn mở |
+| Grafana | https://grafana.3-39-32-158.sslip.io | Mỗi người một tài khoản `hoang`, `manh`, `nam`, quyền Editor (xem dashboard Apollo, dùng Explore để xem metric GPU và log) |
 | Argo CD | https://argocd.3-39-32-158.sslip.io | Chỉ có tài khoản admin, nhờ Tuấn mở |
 
 Repo Apollo là public, nên mật khẩu **không bao giờ** được ghi vào repo. Cần mật khẩu thì hỏi Tuấn qua tin nhắn riêng.
+
+Mật khẩu ban đầu Tuấn gửi qua tin nhắn. Sau lần đăng nhập đầu, mỗi người nên tự đổi:
+
+- **Grafana:** góc trên bên phải, bấm avatar → Profile → Change password.
+- **MLflow** (Portal dùng chung mật khẩu này):
+
+  ```bash
+  curl -u <user>:<mật-khẩu-cũ> -X PATCH https://mlflow.3-39-32-158.sslip.io/api/2.0/mlflow/users/update-password \
+    -H 'Content-Type: application/json' \
+    -d '{"username":"<user>","password":"<mật-khẩu-mới>","current_password":"<mật-khẩu-cũ>"}'
+  ```
 
 ## 1. Kết luận nhanh
 
