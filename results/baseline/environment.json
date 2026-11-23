@@ -1,0 +1,21 @@
+{
+  "python": "3.12.3",
+  "platform": "Linux-6.11.0-1016-nvidia-x86_64-with-glibc2.39",
+  "torch": "2.5.1+cu124",
+  "torchvision": "0.20.1+cu124",
+  "cuda": "12.4",
+  "cudnn": 90100,
+  "gpu": "NVIDIA H100 80GB HBM3",
+  "precision": "FP32",
+  "tf32": false,
+  "deterministic": true,
+  "source_sha256": {
+    "src/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "src/baseline/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "src/baseline/common.py": "a41c74748c4b721738602e02a39ffdb3c25f5b1f726f81055fb4523a01d3fdcc",
+    "src/baseline/eval.py": "d4d1f45fdfb8c5f82e33f1ec90264b8fa76b46c58f1b8a0b24d19450169d5d9a",
+    "src/baseline/export.py": "f03c4901025edb12f15673dab5f262d40873711f145f056148c76eaca9ef8af4",
+    "src/baseline/train.py": "9450838ea16315b35549432b58cbdf6566b6bb7fc8cc107606af5d74e5f4df61"
+  },
+  "manifest_sha256": "a79611d82025a4da4c159dbbbb5a7670b0099575dbb47929c3f676cbb2a313ce"
+}

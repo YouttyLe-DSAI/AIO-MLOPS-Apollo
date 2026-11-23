@@ -1,0 +1,10 @@
+{
+  "passed": true,
+  "triton_top1_accuracy": 0.9485,
+  "offline_top1_accuracy": 0.9485,
+  "diff_pp": 0.0,
+  "tolerance_pp": 0.5,
+  "images": 10000,
+  "batch_size": 32,
+  "duration_s": 1.74
+}

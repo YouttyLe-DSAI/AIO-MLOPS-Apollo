@@ -1,0 +1,10 @@
+.git
+.venv*
+.env*
+.worktrees
+backups
+artifacts
+data
+mlruns
+__pycache__
+.pytest_cache

@@ -1,0 +1,22 @@
+{
+  "registered_model": "resnet18-cifar10",
+  "version": "2",
+  "model_version_id": "resnet18-baseline-fp32-v1",
+  "status": "READY",
+  "registration_run_id": "ded483e5ea1544a5be15a005dd8d18b0",
+  "training_run_id": "45e197e3a71a47c9a039591572f52d72",
+  "source_training_run_id": "c41f4beaebf947a6b73b785c8c340ced",
+  "artifact_source": "mlflow-artifacts:/5/ded483e5ea1544a5be15a005dd8d18b0/artifacts/model",
+  "offline_top1_accuracy": 0.9485,
+  "onnx_sha256": "854ce13226af8a634431e70e87bad2226d09d78e07acb641b6d431288dc0900a",
+  "registry_roundtrip_checksum_verified": true,
+  "portal_verified": true,
+  "portal_url": "https://portal.3-39-32-158.sslip.io",
+  "serving_validation": "OK: Model version /run/media/rin/Rin/Projects/MLOps/artifacts/model-versions/resnet18-baseline-fp32-v1 is valid",
+  "serving_repository_commit": "6b89488f51623e0902761eaed4e49b9894437acb",
+  "release_triggered": true,
+  "benchmark_triggered": true,
+  "benchmark_workflow_run_id": 45157351610,
+  "benchmark_run_id": "96bc50c90d1945ed921c30046014fef0",
+  "benchmark_status": "completed"
+}

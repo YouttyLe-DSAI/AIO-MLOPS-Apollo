@@ -1,0 +1,17 @@
+seed: 42
+model: resnet18
+data_root: data
+output_dir: artifacts/resnet18_cifar10_seed42
+epochs: 100
+batch_size: 128
+eval_batch_size: 256
+workers: 8
+threads: 4
+lr: 0.1
+momentum: 0.9
+weight_decay: 0.0005
+val_per_class: 500
+calibration_per_class: 100
+device: cuda
+deterministic: true
+experiment: cifar10-baseline

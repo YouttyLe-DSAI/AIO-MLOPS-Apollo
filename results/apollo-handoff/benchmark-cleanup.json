@@ -1,0 +1,7 @@
+{
+  "portal_http_status": 200,
+  "serving_card": "Triton đang phục vụ Đang tắt resnet18-baseline-fp32-v1 v2 FP32 baseline replicas 0: đã trả GPU nên không tốn tiền. Benchmark (tick “Giữ Triton chạy”) sẽ bật lại. Top-1 offline 94.85 % Throughput tối đa 7,908 ảnh/s Latency p95 · c1 b1 1.61 ms Pod sẵn sàng 0/0",
+  "triton_replicas_zero": true,
+  "node_shutdown_verified": false,
+  "autoscaler_idle_grace_minutes": 10
+}

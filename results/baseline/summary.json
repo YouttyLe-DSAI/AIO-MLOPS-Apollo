@@ -1,0 +1,13 @@
+{
+  "model": "resnet18",
+  "best_epoch": 96,
+  "best_val_accuracy": 0.9532,
+  "test_accuracy": 0.9485,
+  "test_loss": 0.19924542021751404,
+  "parameters": 11173962,
+  "fp32_weights_bytes": 44734408,
+  "training_seconds_this_invocation": 1420.8721935439971,
+  "peak_cuda_memory_bytes": 1168829440,
+  "mlflow_run_id": "c41f4beaebf947a6b73b785c8c340ced",
+  "checkpoint_sha256": "7af55a05e13cd14a12d302bf231f3264861eff01fad87a3f38cb1fdd4cf230fa"
+}

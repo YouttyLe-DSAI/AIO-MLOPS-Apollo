@@ -1,0 +1,26 @@
+ Successfully read data for 1 stream/streams with 64 step/steps.
+*** Measurement Settings ***
+  Batch size: 8
+  Service Kind: TRITON
+  Using "time_windows" mode for stabilization
+  Stabilizing using average latency and throughput
+  Measurement window: 5000 msec
+  Using synchronous calls for inference
+
+Request concurrency: 4
+  Client: 
+    Request count: 14308
+    Throughput: 6334.19 infer/sec
+    Avg latency: 5031 usec (standard deviation 141 usec)
+    p50 latency: 5035 usec
+    p90 latency: 5120 usec
+    p95 latency: 5155 usec
+    p99 latency: 5234 usec
+    Avg HTTP time: 5027 usec (send/recv 70 usec + response wait 4957 usec)
+  Server: 
+    Inference count: 114488
+    Execution count: 10736
+    Successful request count: 14311
+    Avg request latency: 4297 usec (overhead 23 usec + queue 897 usec + compute input 2 usec + compute infer 1820 usec + compute output 1554 usec)
+Inferences/Second vs. Client Average Batch Latency
+Concurrency: 4, throughput: 6334.19 infer/sec, latency 5031 usec

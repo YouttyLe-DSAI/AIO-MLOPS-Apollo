@@ -1,0 +1,13 @@
+{
+  "model_name": "resnet18-cifar10",
+  "model_version": "2",
+  "model_version_id": "resnet18-baseline-fp32-v1",
+  "workflow_run_id": 45157351610,
+  "serving_image": "669167565740.dkr.ecr.ap-northeast-2.amazonaws.com/resnet18-triton:resnet18-baseline-fp32-v1",
+  "image_digest": "sha256:e4e25ebc26b8b9e4f5761720e2e54f39acf0e9672d980069587f3566f8088e08",
+  "status": "release_succeeded",
+  "target_precision": "FP32",
+  "engine_build_gpu": "NVIDIA L4",
+  "trtexec_precision_flag": "--noTF32",
+  "benchmark_workflow_state": "completed"
+}

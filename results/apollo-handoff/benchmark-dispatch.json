@@ -1,0 +1,14 @@
+{
+  "model_name": "resnet18-cifar10",
+  "model_version": "2",
+  "model_version_id": "resnet18-baseline-fp32-v1",
+  "workflow_run_id": 45157351610,
+  "workflow_url": "https://github.com/YouttyLe-DSAI/AIO-MLOPS-Apollo/actions/runs/45157351610",
+  "requested_by": "hoang",
+  "keep_serving": false,
+  "release_included": true,
+  "head_sha": "fd65c60dc1af842bedce9f275178c2aaf2621f32",
+  "status": "completed",
+  "conclusion": "success",
+  "mlflow_run_id": "96bc50c90d1945ed921c30046014fef0"
+}

@@ -1,0 +1,23 @@
+{
+  "check": "gpu_fit_only",
+  "passed": true,
+  "target_gpu": "NVIDIA GeForce RTX 4090",
+  "execution_gpu": "NVIDIA H100 80GB HBM3",
+  "target_vram_gib": 24,
+  "cuda_memory_budget_gib": 16,
+  "gpu_total_memory_bytes": 85017493504,
+  "cuda_allocator_limit_bytes": 17179869184,
+  "cuda_allocator_fraction": 0.20207451991267775,
+  "train_steps": 3,
+  "batch_size": 128,
+  "eval_batch_size": 128,
+  "workers": 4,
+  "threads": 4,
+  "precision": "FP32",
+  "tf32": false,
+  "peak_cuda_allocated_bytes": 1009965568,
+  "peak_cuda_reserved_bytes": 1602224128,
+  "torch": "2.5.1+cu124",
+  "actual_rtx4090_tested": false,
+  "note": "Allocator budget only; H100 does not emulate RTX 4090 speed or CUDA kernel memory requirements."
+}
