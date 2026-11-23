@@ -1,0 +1,53 @@
+{
+  "model": "resnet18_cifar10_fp32",
+  "version": 1,
+  "format": "ONNX",
+  "precision": "FP32",
+  "opset": 17,
+  "input": {
+    "shape": [
+      "N",
+      3,
+      32,
+      32
+    ],
+    "dtype": "float32",
+    "layout": "NCHW",
+    "color": "RGB",
+    "scale": "uint8 / 255 then (x - mean) / std"
+  },
+  "input_name": "input",
+  "output_name": "logits",
+  "output": "10 raw class logits (no softmax)",
+  "class_order": [
+    "airplane",
+    "automobile",
+    "bird",
+    "cat",
+    "deer",
+    "dog",
+    "frog",
+    "horse",
+    "ship",
+    "truck"
+  ],
+  "mean": [
+    0.4914,
+    0.4822,
+    0.4465
+  ],
+  "std": [
+    0.247,
+    0.2435,
+    0.2616
+  ],
+  "checkpoint_sha256": "7af55a05e13cd14a12d302bf231f3264861eff01fad87a3f38cb1fdd4cf230fa",
+  "onnx_sha256": "854ce13226af8a634431e70e87bad2226d09d78e07acb641b6d431288dc0900a",
+  "onnx_bytes": 44686163,
+  "best_epoch": 96,
+  "calibration_sha256": "a6e76277d2caf512b28f5db6613f93a161f5447f2eb0ec3122e7e69ccb6690f1",
+  "calibration_samples": 1000,
+  "calibration_source": "training subset only",
+  "dataset_manifest_sha256": "a79611d82025a4da4c159dbbbb5a7670b0099575dbb47929c3f676cbb2a313ce",
+  "triton_validation": "config prepared; live Triton server not tested by this export"
+}

@@ -17,3 +17,25 @@ terraform.rc
 secrets.auto.tfvars
 *.secret.tfvars
 infra/terraform/backend.hcl
+
+# Local training, artifacts and authentication
+.venv*/
+.worktrees/
+backups/
+__pycache__/
+.pytest_cache/
+*.pyc
+data/
+artifacts/
+mlruns/
+mlflow.db*
+*.pt
+*.pth
+*.onnx
+*.npy
+*.npz
+*.tar.gz
+*.log
+.env
+.env.*
+!.env.example

@@ -1,0 +1,11 @@
+{
+  "run_id": "45e197e3a71a47c9a039591572f52d72",
+  "source_run_id": "c41f4beaebf947a6b73b785c8c340ced",
+  "experiment_id": "4",
+  "reused": false,
+  "tracking_uri": "https://mlflow.3-39-32-158.sslip.io",
+  "checkpoint_sha256": "7af55a05e13cd14a12d302bf231f3264861eff01fad87a3f38cb1fdd4cf230fa",
+  "test_accuracy": 0.9485,
+  "training_gpu": "NVIDIA H100 80GB HBM3",
+  "kind": "historical_training_import"
+}

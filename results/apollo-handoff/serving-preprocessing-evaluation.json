@@ -1,0 +1,11 @@
+{
+  "serving_repository_commit": "6b89488f51623e0902761eaed4e49b9894437acb",
+  "preprocessing": "serving.preprocessing.preprocess",
+  "test_samples": 10000,
+  "correct": 9485,
+  "top1_accuracy": 0.9485,
+  "provider": "CPUExecutionProvider",
+  "batch_size": 128,
+  "seconds": 31.45542145599029,
+  "onnx_sha256": "854ce13226af8a634431e70e87bad2226d09d78e07acb641b6d431288dc0900a"
+}

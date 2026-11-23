@@ -1,0 +1,266 @@
+{
+  "onnx_sha256": "854ce13226af8a634431e70e87bad2226d09d78e07acb641b6d431288dc0900a",
+  "checkpoint_sha256": "7af55a05e13cd14a12d302bf231f3264861eff01fad87a3f38cb1fdd4cf230fa",
+  "execution_provider": "CPUExecutionProvider",
+  "training_gpu": "NVIDIA H100 80GB HBM3",
+  "selection": "24 random official test indices with seed 42; first 8 recorded errors",
+  "full_test_accuracy": 0.9485,
+  "predictions": [
+    {
+      "gallery": "prediction-demo.png",
+      "test_index": 857,
+      "true_class": "airplane",
+      "predicted_class": "airplane",
+      "softmax": 0.9998362064361572,
+      "correct": true
+    },
+    {
+      "gallery": "prediction-demo.png",
+      "test_index": 5128,
+      "true_class": "cat",
+      "predicted_class": "cat",
+      "softmax": 0.9999562501907349,
+      "correct": true
+    },
+    {
+      "gallery": "prediction-demo.png",
+      "test_index": 9744,
+      "true_class": "automobile",
+      "predicted_class": "automobile",
+      "softmax": 0.9986925721168518,
+      "correct": true
+    },
+    {
+      "gallery": "prediction-demo.png",
+      "test_index": 7603,
+      "true_class": "truck",
+      "predicted_class": "truck",
+      "softmax": 0.9997438788414001,
+      "correct": true
+    },
+    {
+      "gallery": "prediction-demo.png",
+      "test_index": 6962,
+      "true_class": "horse",
+      "predicted_class": "deer",
+      "softmax": 0.9982514977455139,
+      "correct": false
+    },
+    {
+      "gallery": "prediction-demo.png",
+      "test_index": 4321,
+      "true_class": "dog",
+      "predicted_class": "dog",
+      "softmax": 0.9988698363304138,
+      "correct": true
+    },
+    {
+      "gallery": "prediction-demo.png",
+      "test_index": 1825,
+      "true_class": "bird",
+      "predicted_class": "bird",
+      "softmax": 0.9997050166130066,
+      "correct": true
+    },
+    {
+      "gallery": "prediction-demo.png",
+      "test_index": 7854,
+      "true_class": "cat",
+      "predicted_class": "cat",
+      "softmax": 0.9995699524879456,
+      "correct": true
+    },
+    {
+      "gallery": "prediction-demo.png",
+      "test_index": 8570,
+      "true_class": "frog",
+      "predicted_class": "frog",
+      "softmax": 0.9988704323768616,
+      "correct": true
+    },
+    {
+      "gallery": "prediction-demo.png",
+      "test_index": 6531,
+      "true_class": "deer",
+      "predicted_class": "deer",
+      "softmax": 0.9992300271987915,
+      "correct": true
+    },
+    {
+      "gallery": "prediction-demo.png",
+      "test_index": 940,
+      "true_class": "truck",
+      "predicted_class": "truck",
+      "softmax": 0.9997238516807556,
+      "correct": true
+    },
+    {
+      "gallery": "prediction-demo.png",
+      "test_index": 4502,
+      "true_class": "horse",
+      "predicted_class": "horse",
+      "softmax": 0.999367892742157,
+      "correct": true
+    },
+    {
+      "gallery": "prediction-demo.png",
+      "test_index": 890,
+      "true_class": "deer",
+      "predicted_class": "deer",
+      "softmax": 0.999182403087616,
+      "correct": true
+    },
+    {
+      "gallery": "prediction-demo.png",
+      "test_index": 7349,
+      "true_class": "cat",
+      "predicted_class": "cat",
+      "softmax": 0.9998525381088257,
+      "correct": true
+    },
+    {
+      "gallery": "prediction-demo.png",
+      "test_index": 5002,
+      "true_class": "ship",
+      "predicted_class": "ship",
+      "softmax": 0.9997923970222473,
+      "correct": true
+    },
+    {
+      "gallery": "prediction-demo.png",
+      "test_index": 7722,
+      "true_class": "horse",
+      "predicted_class": "horse",
+      "softmax": 0.9991797804832458,
+      "correct": true
+    },
+    {
+      "gallery": "prediction-demo.png",
+      "test_index": 4380,
+      "true_class": "truck",
+      "predicted_class": "truck",
+      "softmax": 0.9997637867927551,
+      "correct": true
+    },
+    {
+      "gallery": "prediction-demo.png",
+      "test_index": 9267,
+      "true_class": "bird",
+      "predicted_class": "bird",
+      "softmax": 0.9998621940612793,
+      "correct": true
+    },
+    {
+      "gallery": "prediction-demo.png",
+      "test_index": 3707,
+      "true_class": "frog",
+      "predicted_class": "frog",
+      "softmax": 0.9960764050483704,
+      "correct": true
+    },
+    {
+      "gallery": "prediction-demo.png",
+      "test_index": 5257,
+      "true_class": "ship",
+      "predicted_class": "ship",
+      "softmax": 0.9997910857200623,
+      "correct": true
+    },
+    {
+      "gallery": "prediction-demo.png",
+      "test_index": 1280,
+      "true_class": "cat",
+      "predicted_class": "cat",
+      "softmax": 0.9997400641441345,
+      "correct": true
+    },
+    {
+      "gallery": "prediction-demo.png",
+      "test_index": 2011,
+      "true_class": "bird",
+      "predicted_class": "bird",
+      "softmax": 0.9992597699165344,
+      "correct": true
+    },
+    {
+      "gallery": "prediction-demo.png",
+      "test_index": 7168,
+      "true_class": "dog",
+      "predicted_class": "cat",
+      "softmax": 0.6920356154441833,
+      "correct": false
+    },
+    {
+      "gallery": "prediction-demo.png",
+      "test_index": 8393,
+      "true_class": "ship",
+      "predicted_class": "ship",
+      "softmax": 0.9997856020927429,
+      "correct": true
+    },
+    {
+      "gallery": "error-demo.png",
+      "test_index": 15,
+      "true_class": "ship",
+      "predicted_class": "frog",
+      "softmax": 0.6699557304382324,
+      "correct": false
+    },
+    {
+      "gallery": "error-demo.png",
+      "test_index": 52,
+      "true_class": "airplane",
+      "predicted_class": "dog",
+      "softmax": 0.35475486516952515,
+      "correct": false
+    },
+    {
+      "gallery": "error-demo.png",
+      "test_index": 58,
+      "true_class": "deer",
+      "predicted_class": "dog",
+      "softmax": 0.5174089074134827,
+      "correct": false
+    },
+    {
+      "gallery": "error-demo.png",
+      "test_index": 59,
+      "true_class": "frog",
+      "predicted_class": "cat",
+      "softmax": 0.8775718212127686,
+      "correct": false
+    },
+    {
+      "gallery": "error-demo.png",
+      "test_index": 61,
+      "true_class": "cat",
+      "predicted_class": "dog",
+      "softmax": 0.9842437505722046,
+      "correct": false
+    },
+    {
+      "gallery": "error-demo.png",
+      "test_index": 118,
+      "true_class": "bird",
+      "predicted_class": "frog",
+      "softmax": 0.9959022402763367,
+      "correct": false
+    },
+    {
+      "gallery": "error-demo.png",
+      "test_index": 147,
+      "true_class": "bird",
+      "predicted_class": "dog",
+      "softmax": 0.7304255962371826,
+      "correct": false
+    },
+    {
+      "gallery": "error-demo.png",
+      "test_index": 158,
+      "true_class": "dog",
+      "predicted_class": "cat",
+      "softmax": 0.9954745173454285,
+      "correct": false
+    }
+  ]
+}
