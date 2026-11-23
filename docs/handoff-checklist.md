@@ -16,7 +16,7 @@ Luồng chi tiết của nền tảng nằm ở [`platform-workflow.md`](platfor
 
 | Dịch vụ | Địa chỉ | Tài khoản |
 | --- | --- | --- |
-| Repo Apollo (public) | https://github.com/YouttyLe-DSAI/AIO-MLOPS-Apollo | Hoàng, Mạnh đã có quyền ghi. **Nam chưa được mời** (Tuấn mời) |
+| Repo Apollo (public) | https://github.com/YouttyLe-DSAI/AIO-MLOPS-Apollo | Hoàng, Mạnh có quyền ghi. Nam được mời lại ngày 23/11 (quyền ghi), nhận lời mời tại https://github.com/YouttyLe-DSAI/AIO-MLOPS-Apollo/invitations trong 7 ngày |
 | Repo serving (private) | https://github.com/dauvannam1804/aio-mlops-serving | Nam (owner) |
 | Repo GitOps (private) | `YouttyLe-DSAI/AIO-MLOPS-Apollo-gitops` | Hiện chỉ Tuấn có quyền |
 | MLflow | https://mlflow.3-39-32-158.sslip.io | Mỗi người một tài khoản: `hoang`, `manh`, `nam` |
@@ -347,7 +347,7 @@ Repo chưa có git tag `cp1`–`cp5` nào.
 | 3 | Bảng so sánh và biểu đồ cho report: accuracy vs throughput, latency vs concurrency, VRAM vs throughput | Nam | Mỗi con số truy về được một MLflow run |
 | 4 | Đưa code train/KD/pruning/PTQ lên Git, kèm link checkpoint và sha256 | Hoàng, Mạnh | PR merge, CI xanh |
 | 5 | Chốt repo nộp, merge PR #2, viết README tổng và bảng phiên bản | Tuấn | README dẫn được người mới chạy từ đầu |
-| 6 | Repo serving: đổi tên metric DCGM sang tên mới (`DCGM_FI_DEV_GPU_UTIL` → `…_GPU_UTIL_RATIO`, `FB_USED` → `…_FB_USED_BYTES`); xử lý PR #11; mời Nam vào Apollo | Nam, Tuấn | Truy vấn GPU trong repo serving trả về dữ liệu |
+| 6 | Repo serving: đổi tên metric DCGM sang tên mới (`DCGM_FI_DEV_GPU_UTIL` → `…_GPU_UTIL_RATIO`, `FB_USED` → `…_FB_USED_BYTES`); xử lý PR #11; Nam nhận lời mời vào Apollo (đã gửi lại 23/11) | Nam | Truy vấn GPU trong repo serving trả về dữ liệu |
 | 7 | Ghi các điểm ↔ ở mục 3.5 vào Decision Log | Tuấn | Handbook khớp với thực tế |
 | 8 | Một người không viết code chạy lại end-to-end theo README, có biên bản (REPRO-04) | Mạnh (tester) | Có biên bản, lỗi gặp phải đã sửa |
 | 9 | Report và slides | Cả nhóm | DEL-05, DEL-06 |
