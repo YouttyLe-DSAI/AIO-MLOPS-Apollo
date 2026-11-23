@@ -61,3 +61,8 @@ Nguồn yêu cầu: [Google Docs](https://docs.google.com/document/d/1ir1vsAyo6x
 Kiểm tra ngắn 3 bước train + 1 batch validation trên **NVIDIA H100 80GB HBM3** đạt: peak allocated **0.94 GiB**, peak reserved **1.49 GiB**. Bộ 8 tests sau thay đổi đạt. Xem `results/rtx4090-profile/gpu-fit.json` và [ảnh demo](results-demo.md).
 
 Giới hạn áp dụng cho caching allocator của PyTorch, không gồm toàn bộ CUDA/driver. Đây là kiểm tra tài nguyên với profile hướng tới 4090 trên H100; chưa chạy RTX 4090 thật và chưa train lại 100 epochs bằng profile mới. Kết quả 94,85% và thời gian 23,68 phút ở trên tiếp tục thuộc run H100 gốc.
+
+
+## Bổ sung: serving benchmark đã hoàn tất
+
+Báo cáo training/offline phía trên giữ nguyên dữ liệu của run gốc. Baseline FP32 hiện đã đăng ký thành `resnet18-cifar10` version 2, Release lên Triton/TensorRT trên L4 và hoàn tất benchmark. Smoke test đạt 94,85% trên 10.000 ảnh; 12/12 điểm, 36 lần đo, CV throughput lớn nhất 0,79%. Xem [báo cáo serving](baseline-serving-benchmark.md) và raw data để truy vết các số đo mới.

@@ -9,7 +9,7 @@ Baseline cho dự án **ML Model Compression & Triton Serving Platform**. ResNet
 - [Training run đã import](https://mlflow.3-39-32-158.sslip.io/#/experiments/4/runs/45e197e3a71a47c9a039591572f52d72): lịch sử 100 epochs và artifacts gốc, có liên kết tới training run lịch sử.
 - Registration run: `ded483e5ea1544a5be15a005dd8d18b0`. Gói đã được tải ngược từ registry để kiểm tra SHA-256 ONNX.
 - Đánh giá lại đủ 10.000 ảnh với `serving.preprocessing.preprocess` đạt **94,85%**, 9.485 dự đoán đúng.
-- Tham chiếu dùng trong release workflow: `model_name=resnet18-cifar10`, `model_version=2`. Release/Benchmark chưa được kích hoạt trong lần bàn giao này.
+- Tham chiếu dùng trong release workflow: `model_name=resnet18-cifar10`, `model_version=2`. Release/Benchmark đã hoàn tất: Smoke test 94,85%, đủ 12/12 điểm và CV throughput lớn nhất 0,79%. Triton đã về replicas 0. Xem [báo cáo serving](baseline-serving-benchmark.md).
 
 Lấy artifacts sau khi đã cấu hình tài khoản MLflow bằng biến môi trường ở phần dưới:
 
@@ -62,7 +62,7 @@ uv run --with 'mlflow-skinny==3.16.0' --with pyyaml python scripts/register_mode
 
 Model version gồm ONNX FP32 nguyên bản + `meta.yaml`, `offline_top1_accuracy: 0.9485` (phân số), preprocessing và provenance. Giá trị `source.training_run` trỏ tới run đã import trên MLflow; `source.original_training_run` giữ run ID lịch sử. Importer tái sử dụng run `FINISHED` có cùng source/checkpoint hash và `import_status=complete` để tránh tạo lại một import đã xong.
 
-Release/Benchmark được thực hiện riêng theo [platform-workflow.md](platform-workflow.md), sau khi xác nhận Model version trên Portal và thống nhất lịch chạy GPU.
+Một lần Release/Benchmark của baseline v2 đã được xác minh đầy đủ. Khi đo lại hoặc đo variant mới, làm theo [platform-workflow.md](platform-workflow.md) và thống nhất lịch chạy GPU.
 
 ## Chạy training
 

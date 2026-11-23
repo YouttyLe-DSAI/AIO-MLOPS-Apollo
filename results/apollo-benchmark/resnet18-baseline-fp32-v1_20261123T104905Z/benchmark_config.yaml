@@ -1,0 +1,32 @@
+# Benchmark config for the in-cluster Benchmark Job (infra/benchmark/benchmark.py).
+# Mirrors the `smoke_test:` / `benchmark:` sections of aio-mlops-serving configs/serving.gpu.yaml
+# (serving-decisions #6, #8, #10) so EKS L4 numbers are comparable with the workstation runs.
+# Change the matrix or stability settings there first, then here.
+
+model_name: cifar10_classifier         # Triton model name (fixed by the serving repo)
+
+smoke_test:                            # gate before any Benchmark run
+  tolerance_pp: 0.5                    # max |Triton - offline| Top-1 on the full CIFAR-10 test set, percentage points
+  batch_size: 32                       # images per request (<= max_batch_size 32)
+
+benchmark:
+  protocol: http                       # http | grpc
+  matrix:                              # every concurrency x every batch size, concurrency-major
+    concurrency: [1, 2, 4, 8, 16, 32]
+    batch_size: [1, 8]
+  measurement_interval_ms: 5000        # one Perf Analyzer window; a call uses >= 3 windows
+  stability_percentage: 10             # Perf Analyzer default
+  max_trials: 10                       # Perf Analyzer default
+  perf_analyzer_args: []               # extra flags appended verbatim
+  warmup_runs: 1                       # unrecorded Benchmark runs per point
+  repeats: 3                           # measured Benchmark runs per point (charter: >= 3)
+  payload_images: 64                   # first N CIFAR-10 test images, shared Preprocessing
+
+runtime_metrics:
+  # GPU columns come from Mimir (DCGM exporter 4.x names; scrape interval 15 s, so each >= 15 s
+  # Benchmark run window holds at least one sample). Triton columns come from Triton's own
+  # counters scraped right before and after each Benchmark run (exact per-run deltas).
+  query_delay_s: 30                    # wait after the matrix so the last window's samples are in Mimir
+  queries:
+    gpu_vram_peak_mib: max(max_over_time(DCGM_FI_DEV_FB_USED_BYTES[$range])) / 1048576
+    gpu_util_mean_pct: 100 * max(avg_over_time(DCGM_FI_DEV_GPU_UTIL_RATIO[$range]))

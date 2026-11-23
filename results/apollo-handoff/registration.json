@@ -14,6 +14,9 @@
   "portal_url": "https://portal.3-39-32-158.sslip.io",
   "serving_validation": "OK: Model version /run/media/rin/Rin/Projects/MLOps/artifacts/model-versions/resnet18-baseline-fp32-v1 is valid",
   "serving_repository_commit": "6b89488f51623e0902761eaed4e49b9894437acb",
-  "release_triggered": false,
-  "benchmark_triggered": false
+  "release_triggered": true,
+  "benchmark_triggered": true,
+  "benchmark_workflow_run_id": 45157351610,
+  "benchmark_run_id": "96bc50c90d1945ed921c30046014fef0",
+  "benchmark_status": "completed"
 }
